@@ -4,6 +4,7 @@ PATTERNS='fiber\.house|bsd-unix|\b(192\.168|10)\.[0-9]+\.[0-9]+|172\.(1[6-9]|2[0
 targets=("${@:-.}")
 hits=$(grep -rInHE "$PATTERNS" "${targets[@]}" \
   --exclude-dir=.git --exclude-dir=__pycache__ \
-  --exclude='scrub-check.sh' --exclude-dir=scrub_fixtures --exclude='.gitignore' 2>/dev/null)
+  --exclude='scrub-check.sh' --exclude-dir=scrub_fixtures 2>/dev/null \
+  | grep -vE '^\./\.gitignore:[0-9]+:.*\*\.vault\*')
 if [ -n "$hits" ]; then echo "SCRUB FAIL:"; echo "$hits"; exit 1; fi
 echo "scrub-check: clean"; exit 0

@@ -1,0 +1,5 @@
+# fixture: a nested .gitignore that leaks a real RFC1918 IP.
+# The top-level .gitignore's own glob-pattern self-collision must NOT be
+# used as an excuse to skip nested .gitignore files — this one must
+# still be caught by scrub-check.sh.
+192.168.55.4
