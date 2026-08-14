@@ -1,6 +1,6 @@
 # ZFS pool -> Prometheus textfile collector.
 [Unit]
-Description=Write ZFS pool capacity/scrub/vdev-error Prometheus textfile metrics
+Description=Write ZFS pool throughput/latency/IO-size/queue-depth/capacity/scrub/vdev-error Prometheus textfile metrics
 After=zfs.target
 Wants=zfs.target
 
