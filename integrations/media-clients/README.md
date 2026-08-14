@@ -67,9 +67,9 @@ SABnzbd instance to get real metrics back.
 |---|---|---|
 | `QBITTORRENT_HOST` | *(required)* | qBittorrent WebUI hostname (bare host — the exporter joins host+port itself) |
 | `QBITTORRENT_PORT` | *(required — no default)* | WebUI port. Confirmed against the pinned image: unset means `sys.exit(1)` ("No port specified"), a crash-restart loop under `restart: unless-stopped`, not a clean start |
-| `QBITTORRENT_USER` / `QBITTORRENT_PASS` | *(empty)* | WebUI credentials (or use `QBITTORRENT_API_KEY` instead, qBittorrent 5.2+) |
-| `QBITTORRENT_API_KEY` | *(none)* | Bearer-token auth, alternative to user/pass |
-| `QBITTORRENT_SSL` | `false` | Set `true` if the WebUI is behind HTTPS |
+| `QBITTORRENT_USER` / `QBITTORRENT_PASS` | *(empty)* | WebUI credentials — the only auth this exporter supports at the pinned v1.7.0 (confirmed against `exporter.py` at that tag: no API-key/bearer-token handling exists there, unlike a later unpinned release) |
+| `QBITTORRENT_URL_BASE` | *(empty)* | WebUI path prefix, if it sits behind a reverse proxy at a sub-path |
+| `QBITTORRENT_SSL` | `False` | Set `True` (capitalized) if the WebUI is behind HTTPS — compared case-sensitively, so `true`/`TRUE` are silently treated as `False` (HTTP) |
 | `EXPORTER_ADDRESS` / `EXPORTER_PORT` | `0.0.0.0` / `8000` | address/port the exporter's own HTTP server binds to |
 | `METRICS_PREFIX` | `qbittorrent` | prefix on every emitted metric name — `dashboard.json` assumes the default |
 
