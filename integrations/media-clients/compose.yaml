@@ -1,0 +1,19 @@
+services:
+  qbittorrent-exporter:
+    image: ghcr.io/esanchezm/prometheus-qbittorrent-exporter:v1.7.0
+    env_file:
+      - path: .env
+        required: false
+    ports: ["8000:8000"]
+    restart: unless-stopped
+
+  sabnzbd-exporter:
+    image: ghcr.io/onedr0p/exportarr:v2.3.0
+    # exportarr is a multi-app exporter selected by CLI subcommand — see
+    # README for why this can't be an env var instead.
+    command: ["sabnzbd"]
+    env_file:
+      - path: .env
+        required: false
+    ports: ["8081:8081"]
+    restart: unless-stopped
