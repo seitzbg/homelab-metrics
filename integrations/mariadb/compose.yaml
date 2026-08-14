@@ -1,0 +1,15 @@
+services:
+  mysqld-exporter:
+    image: prom/mysqld-exporter:v0.20.0
+    env_file:
+      - path: .env
+        required: false
+    # mysqld_exporter >= v0.15.0 dropped the monolithic DATA_SOURCE_NAME env
+    # var (see README) — target host/user are passed as flags, interpolated
+    # from .env by `docker compose` at parse time; the password is read
+    # directly from the MYSQLD_EXPORTER_PASSWORD env var injected above.
+    command:
+      - --mysqld.address=${MYSQLD_ADDRESS:-127.0.0.1:3306}
+      - --mysqld.username=${MYSQLD_USERNAME:-exporter}
+    ports: ["9104:9104"]
+    restart: unless-stopped
