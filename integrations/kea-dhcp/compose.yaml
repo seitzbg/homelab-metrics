@@ -1,0 +1,15 @@
+services:
+  kea-exporter:
+    image: ghcr.io/mweinelt/kea-exporter:v0.7.1
+    env_file:
+      - path: .env
+        required: false
+    # UDS mode only: bind-mount the Kea control socket(s) into the
+    # container at the SAME path referenced by TARGETS in .env (the
+    # container user is uid 1000, which needs read/write on the socket —
+    # see README). Not needed in HTTP Control-Agent mode.
+    # volumes:
+    #   - /run/kea/kea4-ctrl-socket:/run/kea/kea4-ctrl-socket
+    #   - /run/kea/kea6-ctrl-socket:/run/kea/kea6-ctrl-socket
+    ports: ["9547:9547"]
+    restart: unless-stopped
