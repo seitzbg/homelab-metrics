@@ -1,0 +1,8 @@
+services:
+  pve-exporter:
+    image: prompve/prometheus-pve-exporter:3.10.0
+    env_file:
+      - path: .env
+        required: false
+    ports: ["9221:9221"]
+    restart: unless-stopped
