@@ -1,21 +1,3 @@
-=== zpool list -Hp -o name,size,alloc,free,fragmentation,capacity,health ===
-tank	4000787030016	1780043264000	2220743766016	7	44	ONLINE
-backup	2000398934016	1900290000000	100108934016	32	95	DEGRADED
-
-=== zpool status ===
-  pool: tank
- state: ONLINE
-  scan: scrub repaired 0B in 03:12:41 with 0 errors on Sun Aug  9 03:12:44 2026
-config:
-
-	NAME        STATE     READ WRITE CKSUM
-	tank        ONLINE       0     0     0
-	  mirror-0  ONLINE       0     0     0
-	    sda     ONLINE       0     0     0
-	    sdb     ONLINE       0     0     0
-
-errors: No known data errors
-
   pool: backup
  state: DEGRADED
 status: One or more devices are faulted in response to persistent errors.

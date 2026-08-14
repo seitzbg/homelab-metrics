@@ -1,0 +1,7 @@
+16 1 0x01 10 2688 4747748064 106224862099500
+name                            type data
+dataset_name                    7    backup/archive
+writes                          4    5023
+nwritten                        4    102938475
+reads                           4    301
+nread                           4    5647382

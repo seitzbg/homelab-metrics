@@ -411,12 +411,569 @@
     },
     {
       "type": "row",
-      "title": "Devices",
+      "title": "Throughput",
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
         "y": 8
+      },
+      "id": 10
+    },
+    {
+      "type": "timeseries",
+      "title": "IOPS",
+      "id": 11,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "iops",
+          "custom": {
+            "fillOpacity": 10
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "R",
+          "expr": "rate(zfs_pool_reads_total{instance=~\"$instance\",pool=~\"$pool\"}[$__rate_interval])",
+          "legendFormat": "{{instance}}/{{pool}} read"
+        },
+        {
+          "refId": "W",
+          "expr": "rate(zfs_pool_writes_total{instance=~\"$instance\",pool=~\"$pool\"}[$__rate_interval])",
+          "legendFormat": "{{instance}}/{{pool}} write"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Bandwidth",
+      "id": 12,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": {
+            "fillOpacity": 10
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "R",
+          "expr": "rate(zfs_pool_read_bytes_total{instance=~\"$instance\",pool=~\"$pool\"}[$__rate_interval])",
+          "legendFormat": "{{instance}}/{{pool}} read"
+        },
+        {
+          "refId": "W",
+          "expr": "rate(zfs_pool_written_bytes_total{instance=~\"$instance\",pool=~\"$pool\"}[$__rate_interval])",
+          "legendFormat": "{{instance}}/{{pool}} write"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Queue depth (active)",
+      "id": 13,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "zfs_pool_queue_depth{instance=~\"$instance\",pool=~\"$pool\",state=\"active\"} > 0",
+          "legendFormat": "{{instance}}/{{pool}} {{queue}}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Latency distribution — $instance",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 20,
+      "repeat": "instance",
+      "repeatDirection": "v"
+    },
+    {
+      "type": "heatmap",
+      "title": "Total wait — read",
+      "id": 21,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 17
+      },
+      "options": {
+        "calculate": false,
+        "cellGap": 1,
+        "color": {
+          "mode": "scheme",
+          "scheme": "Spectral",
+          "steps": 64,
+          "reverse": true
+        },
+        "yAxis": {
+          "unit": "s",
+          "axisPlacement": "left"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": true
+        },
+        "legend": {
+          "show": true
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (le) (rate(zfs_pool_latency_seconds_bucket{instance=~\"$instance\",pool=~\"$pool\",class=\"total_wait\",op=\"read\"}[$__rate_interval]))",
+          "format": "heatmap",
+          "legendFormat": "{{le}}"
+        }
+      ]
+    },
+    {
+      "type": "heatmap",
+      "title": "Total wait — write",
+      "id": 22,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 17
+      },
+      "options": {
+        "calculate": false,
+        "cellGap": 1,
+        "color": {
+          "mode": "scheme",
+          "scheme": "Spectral",
+          "steps": 64,
+          "reverse": true
+        },
+        "yAxis": {
+          "unit": "s",
+          "axisPlacement": "left"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": true
+        },
+        "legend": {
+          "show": true
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (le) (rate(zfs_pool_latency_seconds_bucket{instance=~\"$instance\",pool=~\"$pool\",class=\"total_wait\",op=\"write\"}[$__rate_interval]))",
+          "format": "heatmap",
+          "legendFormat": "{{le}}"
+        }
+      ]
+    },
+    {
+      "type": "heatmap",
+      "title": "Disk wait — read",
+      "id": 23,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 25
+      },
+      "options": {
+        "calculate": false,
+        "cellGap": 1,
+        "color": {
+          "mode": "scheme",
+          "scheme": "Spectral",
+          "steps": 64,
+          "reverse": true
+        },
+        "yAxis": {
+          "unit": "s",
+          "axisPlacement": "left"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": true
+        },
+        "legend": {
+          "show": true
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (le) (rate(zfs_pool_latency_seconds_bucket{instance=~\"$instance\",pool=~\"$pool\",class=\"disk_wait\",op=\"read\"}[$__rate_interval]))",
+          "format": "heatmap",
+          "legendFormat": "{{le}}"
+        }
+      ]
+    },
+    {
+      "type": "heatmap",
+      "title": "Disk wait — write",
+      "id": 24,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 25
+      },
+      "options": {
+        "calculate": false,
+        "cellGap": 1,
+        "color": {
+          "mode": "scheme",
+          "scheme": "Spectral",
+          "steps": 64,
+          "reverse": true
+        },
+        "yAxis": {
+          "unit": "s",
+          "axisPlacement": "left"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": true
+        },
+        "legend": {
+          "show": true
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (le) (rate(zfs_pool_latency_seconds_bucket{instance=~\"$instance\",pool=~\"$pool\",class=\"disk_wait\",op=\"write\"}[$__rate_interval]))",
+          "format": "heatmap",
+          "legendFormat": "{{le}}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Latency quantiles",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 33
+      },
+      "id": 30
+    },
+    {
+      "type": "timeseries",
+      "title": "Total wait quantiles — read",
+      "id": 31,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 34
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "P50",
+          "expr": "histogram_quantile(0.50, sum by (le, host) (rate(zfs_pool_latency_seconds_bucket{instance=~\"$instance\",pool=~\"$pool\",class=\"total_wait\",op=\"read\"}[$__rate_interval])))",
+          "legendFormat": "{{instance}} p50"
+        },
+        {
+          "refId": "P95",
+          "expr": "histogram_quantile(0.95, sum by (le, host) (rate(zfs_pool_latency_seconds_bucket{instance=~\"$instance\",pool=~\"$pool\",class=\"total_wait\",op=\"read\"}[$__rate_interval])))",
+          "legendFormat": "{{instance}} p95"
+        },
+        {
+          "refId": "P99",
+          "expr": "histogram_quantile(0.99, sum by (le, host) (rate(zfs_pool_latency_seconds_bucket{instance=~\"$instance\",pool=~\"$pool\",class=\"total_wait\",op=\"read\"}[$__rate_interval])))",
+          "legendFormat": "{{instance}} p99"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Total wait quantiles — write",
+      "id": 32,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 34
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "P50",
+          "expr": "histogram_quantile(0.50, sum by (le, host) (rate(zfs_pool_latency_seconds_bucket{instance=~\"$instance\",pool=~\"$pool\",class=\"total_wait\",op=\"write\"}[$__rate_interval])))",
+          "legendFormat": "{{instance}} p50"
+        },
+        {
+          "refId": "P95",
+          "expr": "histogram_quantile(0.95, sum by (le, host) (rate(zfs_pool_latency_seconds_bucket{instance=~\"$instance\",pool=~\"$pool\",class=\"total_wait\",op=\"write\"}[$__rate_interval])))",
+          "legendFormat": "{{instance}} p95"
+        },
+        {
+          "refId": "P99",
+          "expr": "histogram_quantile(0.99, sum by (le, host) (rate(zfs_pool_latency_seconds_bucket{instance=~\"$instance\",pool=~\"$pool\",class=\"total_wait\",op=\"write\"}[$__rate_interval])))",
+          "legendFormat": "{{instance}} p99"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "I/O size distribution — $instance",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 41
+      },
+      "id": 40,
+      "repeat": "instance",
+      "repeatDirection": "v"
+    },
+    {
+      "type": "heatmap",
+      "title": "Read request size",
+      "id": 41,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 42
+      },
+      "options": {
+        "calculate": false,
+        "cellGap": 1,
+        "color": {
+          "mode": "scheme",
+          "scheme": "Spectral",
+          "steps": 64,
+          "reverse": true
+        },
+        "yAxis": {
+          "unit": "bytes",
+          "axisPlacement": "left"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": true
+        },
+        "legend": {
+          "show": true
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (le) (rate(zfs_pool_io_size_bytes_bucket{instance=~\"$instance\",pool=~\"$pool\",class=~\"sync_read|async_read\"}[$__rate_interval]))",
+          "format": "heatmap",
+          "legendFormat": "{{le}}"
+        }
+      ]
+    },
+    {
+      "type": "heatmap",
+      "title": "Write request size",
+      "id": 42,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 42
+      },
+      "options": {
+        "calculate": false,
+        "cellGap": 1,
+        "color": {
+          "mode": "scheme",
+          "scheme": "Spectral",
+          "steps": 64,
+          "reverse": true
+        },
+        "yAxis": {
+          "unit": "bytes",
+          "axisPlacement": "left"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": true
+        },
+        "legend": {
+          "show": true
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (le) (rate(zfs_pool_io_size_bytes_bucket{instance=~\"$instance\",pool=~\"$pool\",class=~\"sync_write|async_write\"}[$__rate_interval]))",
+          "format": "heatmap",
+          "legendFormat": "{{le}}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Devices",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 50
       },
       "id": 50
     },
@@ -432,7 +989,7 @@
         "h": 7,
         "w": 16,
         "x": 0,
-        "y": 9
+        "y": 51
       },
       "fieldConfig": {
         "defaults": {
@@ -464,7 +1021,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 9
+        "y": 51
       },
       "fieldConfig": {
         "defaults": {
@@ -495,6 +1052,113 @@
         {
           "refId": "A",
           "expr": "sum(zfs_pool_vdev_errors_total{instance=~\"$instance\",pool=~\"$pool\"}) or vector(0)"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "ARC / ZIL (kstat)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 58
+      },
+      "id": 60
+    },
+    {
+      "type": "timeseries",
+      "title": "ARC hit ratio",
+      "id": 61,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 59
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(node_zfs_arc_hits{instance=~\"$instance\"}[5m]) / (rate(node_zfs_arc_hits{instance=~\"$instance\"}[5m]) + rate(node_zfs_arc_misses{instance=~\"$instance\"}[5m]))",
+          "legendFormat": "{{instance}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "ARC size vs target",
+      "id": 62,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 59
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_zfs_arc_size{instance=~\"$instance\"}",
+          "legendFormat": "{{instance}} size"
+        },
+        {
+          "refId": "B",
+          "expr": "node_zfs_arc_c{instance=~\"$instance\"}",
+          "legendFormat": "{{instance}} target"
+        },
+        {
+          "refId": "C",
+          "expr": "node_zfs_arc_c_max{instance=~\"$instance\"}",
+          "legendFormat": "{{instance}} max"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "ZIL commit rate",
+      "id": 63,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 59
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(node_zfs_zil_zil_commit_count{instance=~\"$instance\"}[5m])",
+          "legendFormat": "{{instance}}"
         }
       ]
     }

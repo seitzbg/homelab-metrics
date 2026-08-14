@@ -18,7 +18,7 @@ trap 'rm -f "$OUTFILE"' EXIT
 
 docker run --rm -v "$PWD:/work" -w /work alpine:3.20 sh -c '
   apk add --no-cache gawk bash >/dev/null &&
-  ZPOOL_STATUS_FIXTURE=fixtures/zpool-status.txt OUT=/work/.zpool-test.prom bash zpool-textfile.sh
+  ZPOOL_STATUS_FIXTURE=fixtures OUT=/work/.zpool-test.prom bash zpool-textfile.sh
 '
 
 docker run --rm -i --entrypoint promtool prom/prometheus:v2.53.0 check metrics < "$OUTFILE"
