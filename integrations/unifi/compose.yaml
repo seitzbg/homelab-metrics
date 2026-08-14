@@ -1,0 +1,8 @@
+services:
+  unpoller:
+    image: ghcr.io/unpoller/unpoller:v3.4.1
+    env_file:
+      - path: .env
+        required: false
+    ports: ["9130:9130"]
+    restart: unless-stopped

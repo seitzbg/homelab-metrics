@@ -1,0 +1,49 @@
+# Derived per-radio UniFi RF health score, recorded from unpoller metrics.
+# Powers the "Radio RF health score" / "RF health trend" panels in
+# dashboard-wifi.json — see README.md for why this file is required.
+#
+# score = 100 * ( 0.30*airtime-headroom + 0.35*channel-cleanliness
+#               + 0.20*client-signal   + 0.15*link-quality )
+# Everything is aggregated to (name, band) — one series per radio. Rules in a
+# group evaluate in order, so the intermediates below are available to the
+# final score rule in the same cycle. Weights are heuristic; read alongside the
+# raw panels, not as ground truth.
+groups:
+  - name: unifi_radio_health
+    rules:
+      # Total channel airtime busy (0..1).
+      - record: unifi:radio_util_total:ratio
+        expr: max by (name, band) (unpoller_device_radio_channel_utilization_total_ratio)
+
+      # Airtime that is OUR traffic (client Rx + our Tx).
+      - record: unifi:radio_util_ours:ratio
+        expr: |
+          max by (name, band) (unpoller_device_radio_channel_utilization_receive_ratio)
+          + max by (name, band) (unpoller_device_radio_channel_utilization_transmit_ratio)
+
+      # 1 - total utilization: how much of the channel is free.
+      - record: unifi:radio_headroom:ratio
+        expr: clamp_min(1 - unifi:radio_util_total:ratio, 0)
+
+      # 1 - external interference (total minus ours) = channel cleanliness.
+      - record: unifi:radio_clean:ratio
+        expr: clamp_min(1 - clamp_min(unifi:radio_util_total:ratio - unifi:radio_util_ours:ratio, 0), 0)
+
+      # Client signal mapped -80 dBm -> 0, -55 dBm -> 1. Only radios with clients.
+      - record: unifi:radio_signal_q:ratio
+        expr: clamp_max(clamp_min((avg by (name, band) (unpoller_device_vap_average_client_signal != 0) + 80) / 25, 0), 1)
+
+      # Link quality from per-poll Tx retries (cap at 2000).
+      - record: unifi:radio_link_q:ratio
+        expr: clamp_min(1 - clamp_max(max by (name, band) (unpoller_device_radio_transmit_retries) / 2000, 1), 0)
+
+      # Composite 0-100. Radios with no clients (no signal_q series) fall back to
+      # 0.7 for the signal term so the score still reflects airtime + cleanliness.
+      - record: unifi:radio_health:score
+        expr: |
+          100 * (
+              0.30 * unifi:radio_headroom:ratio
+            + 0.35 * unifi:radio_clean:ratio
+            + 0.20 * (unifi:radio_signal_q:ratio or (0 * unifi:radio_headroom:ratio + 0.7))
+            + 0.15 * unifi:radio_link_q:ratio
+          )
