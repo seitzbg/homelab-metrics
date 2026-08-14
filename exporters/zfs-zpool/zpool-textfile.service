@@ -1,0 +1,12 @@
+# ZFS pool -> Prometheus textfile collector.
+[Unit]
+Description=Write ZFS pool capacity/scrub/vdev-error Prometheus textfile metrics
+After=zfs.target
+Wants=zfs.target
+
+[Service]
+Type=oneshot
+Environment=TEXTFILE_DIR=/var/lib/node_exporter/textfile_collector
+ExecStart=/usr/local/bin/zpool-textfile.sh
+Nice=10
+IOSchedulingClass=idle
