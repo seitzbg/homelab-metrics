@@ -1,0 +1,3 @@
+Total: 152
+  42: minecraft:item
+  30: minecraft:zombie

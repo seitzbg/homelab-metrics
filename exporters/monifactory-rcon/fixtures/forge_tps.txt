@@ -1,0 +1,3 @@
+Dim minecraft:overworld (Overworld): Mean tick time: 2.140 ms. Mean TPS: 20.000
+Dim minecraft:the_nether (Nether): Mean tick time: 1.020 ms. Mean TPS: 20.000
+Overall: Mean tick time: 3.210 ms. Mean TPS: 20.000
