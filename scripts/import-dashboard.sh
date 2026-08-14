@@ -4,7 +4,12 @@ DASH="$1"; PORT=3999; NAME=hl-metrics-grafana
 
 # Static guard: every datasource reference in the file must be a template
 # variable (${DS_PROMETHEUS}, ${DS_LOKI}, or any other ${...} picker var),
-# or the built-in "-- Grafana --" annotation datasource. A literal UID is
+# or the built-in Grafana annotation datasource. Dashboard JSON represents
+# that built-in two ways depending on schema version/export path: the
+# older `{"type":"grafana","uid":"-- Grafana --"}` and the newer
+# `{"type":"datasource","uid":"grafana"}` (verified round-trips unchanged
+# through a real Grafana 11.2.0 save/fetch — not treated as an unknown/
+# broken datasource reference). Both are exempt. A literal external UID is
 # not portable to a stranger's Grafana and is a hard failure here.
 BAD=$(jq -r '
   [.. | objects | select(has("datasource")) | .datasource]
@@ -12,7 +17,7 @@ BAD=$(jq -r '
   | if type=="object" then (.uid // empty)
     elif type=="string" then .
     else empty end
-' "$DASH" | grep -vE '^-- Grafana --$|^\$\{[A-Za-z0-9_]+\}$' || true)
+' "$DASH" | grep -vE '^-- Grafana --$|^grafana$|^\$\{[A-Za-z0-9_]+\}$' || true)
 if [ -n "$BAD" ]; then
   echo "IMPORT FAIL: literal datasource uid(s) present (expected \${DS_PROMETHEUS}/\${DS_LOKI}/a \${...} template var/-- Grafana --):"
   echo "$BAD"
