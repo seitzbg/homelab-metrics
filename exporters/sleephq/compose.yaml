@@ -1,0 +1,8 @@
+services:
+  sleephq-exporter:
+    build: .
+    env_file:
+      - path: .env
+        required: false
+    ports: ["9826:9826"]
+    restart: unless-stopped
