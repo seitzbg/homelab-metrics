@@ -95,7 +95,7 @@
   "uid": "sleephq-cpap",
   "version": 4,
   "weekStart": "",
-  "description": "CPAP therapy from SleepHQ. Backed by the dedicated PrometheusSleep datasource (5y retention); history was loaded by promtool backfill. Nightly samples sit at 12:00 UTC, so every query uses last_over_time over a >24h window.",
+  "description": "CPAP therapy from SleepHQ. Nightly samples sit at 12:00 UTC, so every query uses last_over_time over a >24h window.",
   "panels": [
     {
       "id": 100,
