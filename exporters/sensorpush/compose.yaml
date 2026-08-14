@@ -1,0 +1,8 @@
+services:
+  sensorpush-exporter:
+    build: .
+    env_file:
+      - path: .env
+        required: false
+    ports: ["9825:9825"]
+    restart: unless-stopped
