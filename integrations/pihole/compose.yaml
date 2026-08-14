@@ -1,0 +1,8 @@
+services:
+  pihole-exporter:
+    image: ekofr/pihole-exporter:v1.2.0
+    env_file:
+      - path: .env
+        required: false
+    ports: ["9617:9617"]
+    restart: unless-stopped
