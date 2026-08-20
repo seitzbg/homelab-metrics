@@ -1,4 +1,6 @@
 host: docker8.fiber.house
 192.168.1.4
+10.20.30.40
+172.16.5.9
 datasource: PrometheusSleep
 env: PROMETHEUS_SLEEP

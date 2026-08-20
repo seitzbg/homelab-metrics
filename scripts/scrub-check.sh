@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -uo pipefail
 # Case-sensitive denylist.
-PATTERNS='fiber\.house|bsd-unix|\b(192\.168|10)\.[0-9]+\.[0-9]+|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]+|\b(seitz|bseitz|munro)\b|\.vault|prometheus-sleep|\b49361\b'
+# The RFC1918 rules require a FULL four-octet address (each octet 1-3 digits):
+# a real internal IP is always four octets, and matching only three (e.g. the
+# old `10\.[0-9]+\.[0-9]+`) false-positives on dotted version strings — a
+# Grafana `"pluginVersion": "10.0.0"` reads as a `10.x.x` private IP otherwise.
+PATTERNS='fiber\.house|bsd-unix|\b192\.168\.[0-9]{1,3}\.[0-9]{1,3}|\b10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|\b172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9]{1,3}|\b(seitz|bseitz|munro)\b|\.vault|prometheus-sleep|\b49361\b'
 # Case-INsensitive denylist: matched via a separate `-i` pass so the rest of
 # PATTERNS above stays case-sensitive (a blanket `-i` on the whole gate would
 # risk false positives on common words). The internal Grafana datasource

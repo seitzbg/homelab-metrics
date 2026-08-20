@@ -1,1 +1,4 @@
 host: ${TARGET_HOST}
+"pluginVersion": "10.0.0"
+schemaVersion: 39
+version: 172.31.2
