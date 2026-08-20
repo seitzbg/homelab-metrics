@@ -1,0 +1,8 @@
+# multi-scrobbler exposes Prometheus metrics at /api/metrics on its web port
+# (:9078). No auth. The job name must be `multi-scrobbler` — the dashboard
+# filters its panels on job="multi-scrobbler".
+scrape_configs:
+  - job_name: multi-scrobbler
+    metrics_path: /api/metrics
+    static_configs:
+      - targets: ['TARGET_HOST:9078']

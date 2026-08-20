@@ -1,0 +1,19 @@
+# Self-metrics for the observability stack itself: Prometheus, Loki, Grafana.
+# All three expose /metrics natively. Keep the job names (prometheus/loki/
+# grafana) — the dashboard filters on them.
+scrape_configs:
+  # Prometheus scrapes itself.
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Loki serves /metrics on its HTTP port (:3100).
+  - job_name: loki
+    static_configs:
+      - targets: ['TARGET_HOST:3100']
+
+  # Grafana serves /metrics on its HTTP port (:3000). Enabled by default; if
+  # disabled, set `[metrics] enabled = true` in grafana.ini.
+  - job_name: grafana
+    static_configs:
+      - targets: ['TARGET_HOST:3000']

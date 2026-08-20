@@ -1,0 +1,36 @@
+# Two jobs: PowerDNS Authoritative and dnsdist, each with a built-in
+# Prometheus endpoint. The relabel rule strips the port from __address__ so
+# both jobs share one `instance` label (the hostname) — the dashboard's
+# $instance variable then lines the two services up on the same host.
+scrape_configs:
+  # PowerDNS Authoritative — enable the webserver/API in pdns.conf:
+  #   webserver=yes
+  #   api=yes
+  #   webserver-address=0.0.0.0
+  #   webserver-allow-from=<prometheus-ip>/32
+  # Metrics are then on :8081/metrics (open to the allow-from ACL, no header).
+  - job_name: powerdns
+    static_configs:
+      - targets: ['TARGET_HOST:8081']
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '([^:]+):.*'
+        target_label: instance
+        replacement: '${1}'
+
+  # dnsdist — enable its webserver in dnsdist.conf, e.g.:
+  #   webserver("0.0.0.0:8083")
+  #   setWebserverConfig({acl="<prometheus-ip>/32", apiKey="..."})
+  # NOTE: when an API key is set, dnsdist's /metrics requires the X-API-Key
+  # header. Vanilla Prometheus scrape configs cannot send arbitrary request
+  # headers, so either gate the endpoint by ACL alone, put a header-injecting
+  # reverse proxy in front, or scrape with an agent that supports custom
+  # headers (e.g. Grafana Alloy's `http_headers`).
+  - job_name: dnsdist
+    static_configs:
+      - targets: ['TARGET_HOST:8083']
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '([^:]+):.*'
+        target_label: instance
+        replacement: '${1}'
