@@ -1,0 +1,10 @@
+# Traefik publishes Prometheus metrics on a dedicated entrypoint (:8082 here),
+# separate from the web/dashboard ports. Enable it in Traefik's STATIC config:
+#   --metrics.prometheus=true
+#   --entryPoints.metrics.address=:8082
+#   --metrics.prometheus.entryPoint=metrics
+# then expose/scrape that port. No auth on the metrics entrypoint by default.
+scrape_configs:
+  - job_name: traefik
+    static_configs:
+      - targets: ['TARGET_HOST:8082']

@@ -1,0 +1,18 @@
+# Garage exposes Prometheus metrics on its admin API port (:3903/metrics).
+# Enable the admin API in garage.toml:
+#   [admin]
+#   api_bind_addr = "[::]:3903"
+#   metrics_token = "..."   # optional; if set, /metrics needs a bearer token
+# Scrape each Garage node (one target per node for a cluster).
+scrape_configs:
+  - job_name: garage
+    # metrics_path defaults to /metrics
+    # If you set [admin] metrics_token, send it as a bearer token — otherwise
+    # delete this authorization block:
+    authorization:
+      credentials: 'YOUR_GARAGE_METRICS_TOKEN'
+    static_configs:
+      - targets: ['TARGET_HOST:3903']
+        # add every node of the cluster here, e.g.:
+        # - 'node2:3903'
+        # - 'node3:3903'

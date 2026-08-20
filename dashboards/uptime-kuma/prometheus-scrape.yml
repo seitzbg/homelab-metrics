@@ -1,0 +1,15 @@
+# Uptime Kuma serves Prometheus metrics at /metrics on its normal web port
+# (3001 by default). The endpoint requires an API key, passed as the HTTP
+# Basic Auth *password* (the username is ignored). Create one in Kuma:
+#   Settings -> API Keys -> Add API Key
+scrape_configs:
+  - job_name: uptime-kuma
+    metrics_path: /metrics
+    basic_auth:
+      username: 'kuma'                # ignored by Kuma; any value works
+      password: 'YOUR_KUMA_API_KEY'
+    static_configs:
+      - targets: ['TARGET_HOST:3001']
+    # If Kuma sits behind a TLS reverse proxy, instead set:
+    #   scheme: https
+    #   static_configs: [{ targets: ['kuma.example.com'] }]

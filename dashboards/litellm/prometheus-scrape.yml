@@ -1,0 +1,24 @@
+# LiteLLM's built-in Prometheus exporter is only active when you enable the
+# callback in config.yaml:
+#   litellm_settings:
+#     callbacks: ["prometheus"]
+# /metrics runs the proxy's auth, so send a valid key as a bearer token (the
+# master key always works). NOTE the trailing slash: bare /metrics 307-
+# redirects to /metrics/, which Prometheus does not follow by default.
+scrape_configs:
+  - job_name: litellm
+    metrics_path: /metrics/
+    authorization:
+      credentials: 'YOUR_LITELLM_MASTER_KEY'
+    static_configs:
+      - targets: ['TARGET_HOST:4000']
+    # Optional cleanup: LiteLLM counts the /metrics/ scrape itself as a proxy
+    # request, and the python client emits *_created series. Drop both so
+    # panels don't have to filter them out:
+    metric_relabel_configs:
+      - source_labels: [route]
+        regex: '/metrics/?'
+        action: drop
+      - source_labels: [__name__]
+        regex: '.*_created'
+        action: drop
