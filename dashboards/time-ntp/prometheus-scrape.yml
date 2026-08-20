@@ -1,0 +1,8 @@
+# Run chrony_exporter (github.com/SuperQ/chrony_exporter) alongside chronyd on
+# each NTP server; it reads chronyd's command socket and serves /metrics on
+# :9123 (chrony_tracking_* / chrony_sources_* / chrony_serverstats_*).
+scrape_configs:
+  - job_name: chrony
+    static_configs:
+      - targets: ['TARGET_HOST:9123']
+        # - 'ntp2:9123'

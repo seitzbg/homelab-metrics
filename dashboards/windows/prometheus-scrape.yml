@@ -1,0 +1,9 @@
+# Install windows_exporter (github.com/prometheus-community/windows_exporter)
+# on each Windows host as a service; it serves /metrics on :9182 by default.
+# The dashboard selects hosts via a $job variable, so the job name is free —
+# `windows` is a sensible default. List one target per Windows machine.
+scrape_configs:
+  - job_name: windows
+    static_configs:
+      - targets: ['TARGET_HOST:9182']
+        # - 'another-windows-host:9182'

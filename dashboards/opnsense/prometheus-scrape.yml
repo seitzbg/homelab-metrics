@@ -1,0 +1,15 @@
+# Two on-firewall agents, installed as OPNsense plugins. Keep the job names
+# (opnsense-node / opnsense-telegraf) — the dashboard filters on them.
+scrape_configs:
+  # node_exporter, from the os-node_exporter plugin (:9100).
+  - job_name: opnsense-node
+    static_configs:
+      - targets: ['TARGET_HOST:9100']
+        # - 'another-firewall:9100'
+
+  # Telegraf with its Prometheus-client output (:9273), from the os-telegraf
+  # plugin — carries the pf/packet-filter counters node_exporter doesn't.
+  - job_name: opnsense-telegraf
+    static_configs:
+      - targets: ['TARGET_HOST:9273']
+        # - 'another-firewall:9273'
