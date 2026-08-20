@@ -17,7 +17,7 @@ prometheus_monitoring['enable'] = true
 and allow your Prometheus host to reach the exporter ports:
 
 ```ruby
-gitlab_rails['monitoring_whitelist'] = ['10.0.0.0/8', '<prometheus-ip>/32']
+gitlab_rails['monitoring_whitelist'] = ['<prometheus-ip>/32']
 ```
 
 Run `gitlab-ctl reconfigure` after editing.
