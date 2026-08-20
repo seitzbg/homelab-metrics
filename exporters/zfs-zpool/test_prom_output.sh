@@ -8,8 +8,7 @@
 #     alpine container that has it.
 #   - promtool isn't installed anywhere on the test host either; it's only
 #     available via the `prom/prometheus` image.
-# Run this script on a host with Docker (e.g.
-# `ssh root@docker3 'cd .../zfs-zpool && bash test_prom_output.sh'`).
+# Run this script on any host with Docker available.
 set -euo pipefail
 cd "$(dirname "$0")"
 

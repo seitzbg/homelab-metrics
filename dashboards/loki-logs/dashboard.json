@@ -147,7 +147,7 @@
   },
   "timezone": "browser",
   "title": "Loki — Logs Explorer",
-  "uid": "fiber-loki-logs",
+  "uid": "loki-logs",
   "version": 1,
   "id": null
 }
