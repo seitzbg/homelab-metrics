@@ -32,6 +32,7 @@ Each integration lands in one of three tiers, by how much it ships:
 | [sleephq](./exporters/sleephq) | 1 | bespoke SleepHQ (CPAP) API exporter |
 | [monifactory-rcon](./exporters/monifactory-rcon) | 1 | bespoke Minecraft/Forge RCON exporter |
 | [zfs-zpool](./exporters/zfs-zpool) | 1 | bespoke `zpool` node_exporter textfile collector |
+| [tempest](./exporters/tempest) | 1 | bespoke WeatherFlow Tempest cloud API exporter |
 | [pihole](./integrations/pihole) | 2 | [ekofr/pihole-exporter](https://github.com/eko/pihole-exporter) |
 | [proxmox](./integrations/proxmox) | 2 | [prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter) |
 | [unifi](./integrations/unifi) (×3: PDU power, switches, WiFi) | 2 | [unpoller](https://github.com/unpoller/unpoller) |
@@ -51,7 +52,7 @@ Each integration lands in one of three tiers, by how much it ships:
 | [opnsense](./dashboards/opnsense) | 3 | node_exporter + telegraf (on-firewall) |
 | [time-ntp](./dashboards/time-ntp) | 3 | chrony_exporter + node_timex |
 
-24 dashboards across the three tiers.
+25 dashboards across the three tiers.
 
 ## Quickstart
 

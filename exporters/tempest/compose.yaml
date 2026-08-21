@@ -1,0 +1,8 @@
+services:
+  tempest-exporter:
+    build: .
+    env_file:
+      - path: .env
+        required: false
+    ports: ["9827:9827"]
+    restart: unless-stopped
