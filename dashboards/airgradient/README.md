@@ -13,9 +13,15 @@ AirGradient monitors expose a **local Prometheus endpoint** at
 `http://<device-ip>/metrics` on port **80** — no exporter needed. Turn on the
 local server / "Open Metrics" option in the device configuration (config
 portal, or the AirGradient app/dashboard that pushes config to the device), and
-give each monitor a stable IP or DNS name your Prometheus can reach. See
-AirGradient's local-server API documentation for the exact toggle on your
-firmware.
+give each monitor a stable IP or DNS name your Prometheus can reach.
+
+> **Note — the exact toggle varies by model/firmware.** The endpoint and metric
+> names here were verified against the AirGradient ONE (I-9PSL) on firmware
+> 3.7.0. On other models or firmware the menu label and path may differ, so
+> confirm against [AirGradient's official
+> documentation](https://www.airgradient.com/documentation/) (see its
+> integration guides) and treat the `curl` below as the source of truth for
+> what your device emits.
 
 Confirm it's live:
 
@@ -26,8 +32,12 @@ curl http://<device-ip>/metrics | grep airgradient_
 ## Scrape
 
 See [`prometheus-scrape.yml`](./prometheus-scrape.yml) — one target per monitor.
-Add a `location` label to each (`bedroom`, `office`, …); the dashboard tells
-devices apart by that label, not by `instance`.
+
+> **Note — the `location` label comes from your scrape config, not the device.**
+> The monitors don't emit a `location`; you attach it per target in the scrape
+> job (`labels: {location: bedroom}`). Every panel legends by `{{location}}`, so
+> if you omit it — or reuse the same value — all devices collapse into one
+> series and you can't tell them apart. Give each target a distinct `location`.
 
 ## Import
 
