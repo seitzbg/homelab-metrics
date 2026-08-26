@@ -1,0 +1,11 @@
+# AirGradient ONE monitors serve native Prometheus at http://<host>/metrics on
+# port 80 — no exporter to run. Give each device a `location` label: every panel
+# legends by {{location}}, so that's how the dashboard tells devices apart.
+# Point TARGET_HOST at each monitor's IP or hostname.
+scrape_configs:
+  - job_name: airgradient
+    static_configs:
+      - targets: ['TARGET_HOST:80']
+        labels: {location: bedroom}
+      # - targets: ['ANOTHER_HOST:80']
+      #   labels: {location: office}

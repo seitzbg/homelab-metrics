@@ -27,6 +27,7 @@ target host. There's no exporter to ship here; each folder holds:
 | [`windows`](./windows) | windows_exporter (on host) | `:9182` |
 | [`opnsense`](./opnsense) | node_exporter + telegraf (on firewall) | `:9100` / `:9273` |
 | [`time-ntp`](./time-ntp) | chrony_exporter + node_timex | `:9123` |
+| [`airgradient`](./airgradient) | AirGradient ONE built-in metrics | `:80/metrics` |
 
 ## Using a scrape snippet
 

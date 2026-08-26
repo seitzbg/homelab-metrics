@@ -51,8 +51,9 @@ Each integration lands in one of three tiers, by how much it ships:
 | [windows](./dashboards/windows) | 3 | windows_exporter |
 | [opnsense](./dashboards/opnsense) | 3 | node_exporter + telegraf (on-firewall) |
 | [time-ntp](./dashboards/time-ntp) | 3 | chrony_exporter + node_timex |
+| [airgradient](./dashboards/airgradient) | 3 | AirGradient ONE built-in Prometheus (`/metrics`) |
 
-25 dashboards across the three tiers.
+26 dashboards across the three tiers.
 
 ## Quickstart
 
