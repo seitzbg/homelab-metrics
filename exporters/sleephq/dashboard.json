@@ -131,7 +131,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((last_over_time(sleephq_ahi{machine=~\"$machine\",type=\"total\"}[25h]) and on(machine,machine_id) (last_over_time(sleephq_usage_seconds{machine=~\"$machine\"}[25h]) >= 3600))[10d:1d])",
+          "expr": "last_over_time((last_over_time(sleephq_ahi{machine=~\"$machine\",type=\"total\"}[25h]) and on(machine,machine_id) (last_over_time(sleephq_usage_seconds{machine=~\"$machine\"}[25h]) >= 3600))[10d:1h])",
           "interval": "1d",
           "instant": true
         }
@@ -202,7 +202,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((last_over_time(sleephq_usage_seconds{machine=~\"$machine\"}[25h]) >= 3600)[10d:1d]) / 3600",
+          "expr": "last_over_time((last_over_time(sleephq_usage_seconds{machine=~\"$machine\"}[25h]) >= 3600)[10d:1h]) / 3600",
           "interval": "1d",
           "instant": true
         }

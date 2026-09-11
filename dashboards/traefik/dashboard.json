@@ -142,6 +142,7 @@
       "id": 3,
       "type": "stat",
       "title": "5xx Error Ratio",
+      "description": "Share of 5xx responses across the selected entrypoints. The true ratio is shown at any nonzero request rate (e.g. one failing request every 10s, all 5xx, reads 100%); with no traffic at all the panel shows no data rather than a misleading 0%.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
@@ -154,7 +155,7 @@
       },
       "targets": [
         {
-          "expr": "100 * sum(rate(traefik_entrypoint_requests_total{instance=~\"$instance\",code=~\"5..\"}[$__rate_interval])) / clamp_min(sum(rate(traefik_entrypoint_requests_total{instance=~\"$instance\"}[$__rate_interval])), 1)",
+          "expr": "100 * sum(rate(traefik_entrypoint_requests_total{instance=~\"$instance\",code=~\"5..\"}[$__rate_interval])) / sum(rate(traefik_entrypoint_requests_total{instance=~\"$instance\"}[$__rate_interval]))",
           "refId": "A",
           "datasource": {
             "type": "prometheus",

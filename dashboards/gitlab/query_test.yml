@@ -1,0 +1,35 @@
+# promtool unit tests for the scoped PostgreSQL/Redis panels in dashboard.json.
+# Regression guard: the generic pg_*/redis_* metrics are shared by any exporter
+# on the datasource, so the GitLab panels must filter on the bundled scrape jobs
+# (gitlab-postgres / gitlab-redis). Adding an unrelated database's series must
+# not change the results.
+#   Run: promtool test rules query_test.yml
+tests:
+  - interval: 1m
+    input_series:
+      # GitLab Postgres: two databases behind the gitlab-postgres job.
+      - series: 'pg_stat_activity_count{job="gitlab-postgres",state="active",datname="gitlabhq_production"}'
+        values: '5+0x5'
+      - series: 'pg_stat_activity_count{job="gitlab-postgres",state="active",datname="gitlabhq_registry"}'
+        values: '3+0x5'
+      # Unrelated Postgres on the same datasource — must be excluded.
+      - series: 'pg_stat_activity_count{job="other-app-postgres",state="active",datname="app"}'
+        values: '100+0x5'
+      # GitLab Redis vs. an unrelated (larger) Redis — max must ignore the latter.
+      - series: 'redis_memory_used_bytes{job="gitlab-redis",instance="gitlab:9121"}'
+        values: '1000+0x5'
+      - series: 'redis_memory_used_bytes{job="other-redis",instance="cache:9121"}'
+        values: '999999+0x5'
+    promql_expr_test:
+      # PG connections (active): only gitlab-postgres counted -> 5+3 = 8, not 108.
+      - eval_time: 3m
+        expr: 'sum(pg_stat_activity_count{job="gitlab-postgres",state="active"})'
+        exp_samples:
+          - labels: '{}'
+            value: 8
+      # Redis memory: only gitlab-redis -> 1000, not the unrelated 999999.
+      - eval_time: 3m
+        expr: 'max(redis_memory_used_bytes{job="gitlab-redis"})'
+        exp_samples:
+          - labels: '{}'
+            value: 1000
