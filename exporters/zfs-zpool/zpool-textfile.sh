@@ -56,7 +56,11 @@ if [ -n "${ZPOOL_STATUS_FIXTURE:-}" ]; then
 else
   zpool_list_full_raw()  { zpool list -Hp -o name,size,alloc,free,fragmentation,capacity,health 2>/dev/null; }
   zpool_list_names_raw() { zpool list -Hp -o name 2>/dev/null; }
-  zpool_status_raw()     { zpool status "$1" 2>/dev/null; }
+  # -p (parsable): print READ/WRITE/CKSUM error counts as exact integers. Without
+  # it, zpool formats large counts as e.g. "1.02K", which `$3+0` in the parser
+  # would silently truncate to 1.02. (-p does not change the "scan: ... repaired
+  # <n>" byte string, so the repaired-bytes parser below still handles suffixes.)
+  zpool_status_raw()     { zpool status -p "$1" 2>/dev/null; }
   zpool_iostat_w_raw()   { zpool iostat -Hpw "$1" 2>/dev/null; }
   zpool_iostat_r_raw()   { zpool iostat -Hpr "$1" 2>/dev/null; }
   zpool_iostat_q_raw()   { zpool iostat -Hpq "$1" 2>/dev/null; }
@@ -178,10 +182,21 @@ EOF
     # ---- I/O size histogram (cumulative; -p makes the bucket raw bytes) ----
     # Columns: size sr_ind sr_agg sw_ind sw_agg ar_ind ar_agg aw_ind aw_agg scr_ind scr_agg tr_ind tr_agg rb_ind rb_agg
     zpool_iostat_r_raw "$pool" | gawk -v p="$pool" '
-      function cls(name, col,   key) {
+      function cls(name, col,   key, s) {
         key = name SUBSEP col;
         run[key] += $(col);
-        print "zfs_pool_io_size_bytes_bucket{pool=\"" p "\"," name ",le=\"" $1 "\"} " run[key];
+        # $1 is the bucket STARTING size (2^j, the lower bound). OpenZFS labels
+        # request-size buckets by that low edge, so the bucket spans [S, 2S) and
+        # its inclusive Prometheus upper bound (le) is 2S-1 -- NOT S. The terminal
+        # bucket 2^24 = 16777216 is the histogram overflow catch-all for every
+        # request >= 2^24 (RQ_HISTO has 25 buckets and HISTO() clamps the index to
+        # buckets-1), so it has no finite upper bound and is represented only by
+        # the +Inf bucket below. NOTE: the latency histogram above is already
+        # labeled by its upper edge upstream, so this 2S-1 transform must not be
+        # applied there.
+        s = $1 + 0;
+        if (s < 16777216)
+          print "zfs_pool_io_size_bytes_bucket{pool=\"" p "\"," name ",le=\"" (2*s - 1) "\"} " run[key];
       }
       NF>=9 {
         cls("class=\"sync_read\",agg=\"ind\"",   2); cls("class=\"sync_read\",agg=\"agg\"",   3);
