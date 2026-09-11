@@ -1,0 +1,50 @@
+# promtool unit tests for the "Usage — last full night" and "AHI — last full
+# night" panels in dashboard.json. The exprs below mirror those panels with
+# $machine -> .*. Regression guard for the [10d:1d] UTC-midnight lag: a night
+# uploaded after midnight was excluded until the next daily boundary. The fix
+# uses [10d:1h], so the latest qualifying night appears within the hour.
+#   Run: promtool test rules query_test.yml
+tests:
+  # A new qualifying night (8h) uploaded at hour 32 must show by hour 36, not
+  # wait for the next UTC midnight. Usage 1h (3600s) through hour 31, then 8h
+  # (28800s) from hour 32. The old [10d:1d] returned 1h here; [10d:1h] returns 8h.
+  - interval: 1h
+    input_series:
+      - series: 'sleephq_usage_seconds{machine="cpap",machine_id="1"}'
+        values: '3600+0x31 28800+0x40'
+    promql_expr_test:
+      - eval_time: 36h
+        expr: 'last_over_time((last_over_time(sleephq_usage_seconds{machine=~".*"}[25h]) >= 3600)[10d:1h]) / 3600'
+        exp_samples:
+          - labels: '{machine="cpap", machine_id="1"}'
+            value: 8
+
+  # An incomplete newer night (0.5h, below the 1h filter) must NOT displace the
+  # last qualifying full night. Usage 1h to hour 31, 8h hours 32-55, 0.5h from
+  # hour 56. At hour 60 the tile still reads 8h.
+  - interval: 1h
+    input_series:
+      - series: 'sleephq_usage_seconds{machine="cpap",machine_id="1"}'
+        values: '3600+0x31 28800+0x23 1800+0x40'
+    promql_expr_test:
+      - eval_time: 60h
+        expr: 'last_over_time((last_over_time(sleephq_usage_seconds{machine=~".*"}[25h]) >= 3600)[10d:1h]) / 3600'
+        exp_samples:
+          - labels: '{machine="cpap", machine_id="1"}'
+            value: 8
+
+  # AHI tracks the same latest qualifying night: AHI 5 through hour 31, then AHI
+  # 12 from hour 32 alongside the qualifying 8h night. At hour 36 the AHI tile
+  # reads 12 (aligned to that night), not the stale 5.
+  - interval: 1h
+    input_series:
+      - series: 'sleephq_ahi{machine="cpap",machine_id="1",type="total"}'
+        values: '5+0x31 12+0x40'
+      - series: 'sleephq_usage_seconds{machine="cpap",machine_id="1"}'
+        values: '3600+0x31 28800+0x40'
+    promql_expr_test:
+      - eval_time: 36h
+        expr: 'last_over_time((last_over_time(sleephq_ahi{machine=~".*",type="total"}[25h]) and on(machine,machine_id) (last_over_time(sleephq_usage_seconds{machine=~".*"}[25h]) >= 3600))[10d:1h])'
+        exp_samples:
+          - labels: '{__name__="sleephq_ahi", machine="cpap", machine_id="1", type="total"}'
+            value: 12

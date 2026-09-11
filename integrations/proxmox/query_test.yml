@@ -1,0 +1,45 @@
+# promtool unit tests for the "Current CPU" and "Guests CPU usage" panels in
+# dashboard.json (exprs mirrored with $instance -> pve1). Regression guard for
+# dividing pve_cpu_usage_ratio (already 0-1 utilization) by pve_cpu_usage_limit
+# (the CPU count): an 8-core node at ratio 0.8 must read 0.8 (80% under the
+# panels' percentunit), not 0.1.
+#   Run: promtool test rules query_test.yml
+tests:
+  # Current CPU (nodes only): utilization used directly; the node join keeps
+  # guests out. Node ratio 0.8, limit 8 -> 0.8. A guest ratio with no
+  # pve_node_info must be excluded.
+  - interval: 1m
+    input_series:
+      - series: 'pve_cpu_usage_ratio{id="node/pve1",instance="pve1"}'
+        values: '0.8+0x5'
+      - series: 'pve_cpu_usage_limit{id="node/pve1",instance="pve1"}'
+        values: '8+0x5'
+      - series: 'pve_node_info{id="node/pve1",instance="pve1"}'
+        values: '1+0x5'
+      - series: 'pve_cpu_usage_ratio{id="qemu/100",instance="pve1"}'
+        values: '0.5+0x5'
+    promql_expr_test:
+      - eval_time: 3m
+        expr: 'pve_cpu_usage_ratio{instance="pve1"} and on(id) pve_node_info'
+        exp_samples:
+          - labels: '{__name__="pve_cpu_usage_ratio", id="node/pve1", instance="pve1"}'
+            value: 0.8
+
+  # Guests CPU usage: utilization used directly, guest_info join adds name/type,
+  # pve_up==1 filter preserved. Guest ratio 0.8, limit 4 -> 0.8.
+  - interval: 1m
+    input_series:
+      - series: 'pve_cpu_usage_ratio{id="qemu/100",instance="pve1"}'
+        values: '0.8+0x5'
+      - series: 'pve_cpu_usage_limit{id="qemu/100",instance="pve1"}'
+        values: '4+0x5'
+      - series: 'pve_guest_info{id="qemu/100",instance="pve1",name="vm1",type="qemu"}'
+        values: '1+0x5'
+      - series: 'pve_up{id="qemu/100",instance="pve1"}'
+        values: '1+0x5'
+    promql_expr_test:
+      - eval_time: 3m
+        expr: '(pve_cpu_usage_ratio{instance="pve1"} * on(id, instance) group_left(name, type) pve_guest_info) and on(id, instance) pve_up == 1'
+        exp_samples:
+          - labels: '{id="qemu/100", instance="pve1", name="vm1", type="qemu"}'
+            value: 0.8
