@@ -35,7 +35,6 @@ curl localhost:9825/metrics
 | `SENSORPUSH_PASSWORD` | *(required)* | SensorPush account password |
 | `EXPORTER_PORT` | `9825` | port the exporter listens on |
 | `POLL_INTERVAL` | `60` | seconds between SensorPush cloud polls |
-| `SENSORPUSH_SOURCE_TEMP_UNIT` | `f` | `f` or `c` — display unit configured on the SensorPush account; `c` values are converted to Fahrenheit before export |
 | `SENSORPUSH_GATEWAY_STALE_SECONDS` | `900` | mark the gateway inactive if not seen within this many seconds |
 | `SENSORPUSH_API_BASE` | `https://api.sensorpush.com/api/v1` | SensorPush API base URL |
 | `SENSORPUSH_HTTP_TIMEOUT` | `20` | per-request HTTP timeout, seconds |
@@ -67,9 +66,40 @@ first successful cloud poll — `sensorpush_scrape_success`,
 are always emitted, even before the first successful poll or with invalid
 credentials, and are the metrics to alert on for exporter health.
 
+### Temperature units
+
+The SensorPush Gateway Cloud API always returns temperature and dewpoint in
+degrees Fahrenheit, regardless of the unit selected for display in the
+SensorPush app (the [published API schema](https://api.sensorpush.com/api/v1/support/swagger/swagger-v1.json)
+pins both fields to Fahrenheit). The exporter passes them through unchanged, so
+`sensorpush_temperature_fahrenheit` / `sensorpush_dewpoint_fahrenheit` are true
+°F. Convert to Celsius in Grafana if you prefer.
+
+There is no source-unit setting. Earlier versions had a
+`SENSORPUSH_SOURCE_TEMP_UNIT` variable that, when set to `c`, incorrectly
+re-converted the already-Fahrenheit values (e.g. a 68 °F reading was exported as
+154.4). **Migration:** remove `SENSORPUSH_SOURCE_TEMP_UNIT` from your
+environment (it is now ignored, and the exporter logs a warning if it is still
+set). If you had it set to `c`, temperatures recorded before this upgrade are
+wrong; only data collected afterward is correct.
+
 ## Dashboard
 
 `dashboard.json` — import into Grafana and point the `Prometheus` template
 variable at your Prometheus datasource. Panels: gateway/sensor status
 overview, current temperature/humidity per sensor, temperature/humidity/
 dewpoint/battery trends, and signal strength / data-freshness.
+
+## Testing
+
+```bash
+cd exporters/sensorpush
+pip install -r requirements.txt   # prometheus_client + requests
+python -m pytest test_sensorpush.py -v
+```
+
+`test_sensorpush.py` drives `SensorPushCollector` with a fake poller and a
+frozen clock — no cloud calls. It asserts that `sensorpush_gateway_active`
+drops to 0 once the cached check-in ages past `SENSORPUSH_GATEWAY_STALE_SECONDS`
+(and returns to 1 after a fresh check-in), and that temperatures pass through
+as Fahrenheit. The tests skip automatically if `prometheus_client` is absent.

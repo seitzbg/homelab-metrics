@@ -28,17 +28,18 @@ Metrics (all gauges unless noted, labeled by sensor name + id):
   sensorpush_last_scrape_timestamp_seconds
   sensorpush_api_errors_total                                 counter
 
-The SensorPush API returns temperature/dewpoint in the account's display unit.
-This exporter assumes that unit is Fahrenheit (SENSORPUSH_SOURCE_TEMP_UNIT=f).
-If your account is set to Celsius, set SENSORPUSH_SOURCE_TEMP_UNIT=c and the
-values are converted to F before export.
+The SensorPush Gateway Cloud API always reports temperature and dewpoint in
+degrees Fahrenheit, regardless of the account's app display preference — the
+published API schema pins Sample.temperature and Sample.dewpoint to Fahrenheit
+(https://api.sensorpush.com/api/v1/support/swagger/swagger-v1.json). This
+exporter therefore exports those values unchanged; there is no source-unit
+setting to configure.
 
 Config (environment):
   SENSORPUSH_EMAIL                (required)
   SENSORPUSH_PASSWORD             (required)
   EXPORTER_PORT                   default 9825
   POLL_INTERVAL                   seconds between cloud polls, default 60
-  SENSORPUSH_SOURCE_TEMP_UNIT     'f' (default) or 'c'
   SENSORPUSH_GATEWAY_STALE_SECONDS  mark gateway inactive if last_seen older, default 900
   SENSORPUSH_API_BASE             default https://api.sensorpush.com/api/v1
   SENSORPUSH_HTTP_TIMEOUT         per-request timeout seconds, default 20
@@ -64,7 +65,6 @@ EMAIL = os.environ.get("SENSORPUSH_EMAIL")
 PASSWORD = os.environ.get("SENSORPUSH_PASSWORD")
 PORT = int(os.environ.get("EXPORTER_PORT", "9825"))
 POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "60"))
-SOURCE_TEMP_UNIT = os.environ.get("SENSORPUSH_SOURCE_TEMP_UNIT", "f").strip().lower()
 # The G1 gateway records a cloud check-in only every few minutes (observed
 # ~3 min), so a tight window flaps active<->inactive. 15 min = genuinely down.
 GATEWAY_STALE_SECONDS = int(os.environ.get("SENSORPUSH_GATEWAY_STALE_SECONDS", "900"))
@@ -82,15 +82,6 @@ def _parse_ts(value):
         except ValueError:
             continue
     return None
-
-
-def _to_f(value):
-    """Return a temperature in Fahrenheit, converting from Celsius if configured."""
-    if value is None:
-        return None
-    if SOURCE_TEMP_UNIT == "c":
-        return value * 9.0 / 5.0 + 32.0
-    return value
 
 
 class SensorPushClient:
@@ -199,20 +190,19 @@ class Poller:
                 "active": bool(meta.get("active", True)),
                 "battery": meta.get("battery_voltage"),
                 "rssi": meta.get("rssi"),
-                "temperature_f": _to_f(latest.get("temperature")) if latest else None,
+                "temperature_f": latest.get("temperature") if latest else None,
                 "humidity": latest.get("humidity") if latest else None,
-                "dewpoint_f": _to_f(latest.get("dewpoint")) if latest else None,
+                "dewpoint_f": latest.get("dewpoint") if latest else None,
                 "observed_ts": _parse_ts(latest.get("observed")) if latest else None,
             }
 
         gw_out = {}
         for gname, gmeta in (gateways or {}).items():
             gmeta = gmeta or {}
-            last_seen = _parse_ts(gmeta.get("last_seen"))
-            gw_out[gname] = {
-                "last_seen_ts": last_seen,
-                "active": last_seen is not None and (now - last_seen) <= GATEWAY_STALE_SECONDS,
-            }
+            # Store only the raw check-in timestamp; freshness (gateway_active) is
+            # derived at scrape time so a stalled poll cannot keep a gateway
+            # "active" indefinitely (see collect()).
+            gw_out[gname] = {"last_seen_ts": _parse_ts(gmeta.get("last_seen"))}
 
         with self.lock:
             self.snapshot = {
@@ -306,10 +296,17 @@ class SensorPushCollector:
             "sensorpush_gateway_active",
             "1 if the gateway checked in within the freshness window, 0 otherwise.",
             labels=["gateway"])
+        # Derive freshness from the cached check-in timestamp vs. the current
+        # time, NOT from a boolean frozen during the last successful poll: once
+        # the cached last_seen ages past the stale window the gateway must read
+        # inactive, even while polls are failing and last_seen stops advancing.
+        now = time.time()
         for gname, g in snap["gateways"].items():
-            if g["last_seen_ts"] is not None:
-                gw_seen.add_metric([gname], g["last_seen_ts"])
-            gw_active.add_metric([gname], 1.0 if g["active"] else 0.0)
+            last_seen = g["last_seen_ts"]
+            if last_seen is not None:
+                gw_seen.add_metric([gname], last_seen)
+            active = last_seen is not None and (now - last_seen) <= GATEWAY_STALE_SECONDS
+            gw_active.add_metric([gname], 1.0 if active else 0.0)
         yield from (gw_seen, gw_active)
 
         success = GaugeMetricFamily(
@@ -339,6 +336,15 @@ def main():
     if not EMAIL or not PASSWORD:
         log.error("SENSORPUSH_EMAIL and SENSORPUSH_PASSWORD must be set")
         sys.exit(1)
+    # Migration guard: earlier versions offered SENSORPUSH_SOURCE_TEMP_UNIT and
+    # (incorrectly) converted API values as if they followed the account's
+    # display unit. The API always returns Fahrenheit, so the setting is gone.
+    if os.environ.get("SENSORPUSH_SOURCE_TEMP_UNIT"):
+        log.warning(
+            "SENSORPUSH_SOURCE_TEMP_UNIT is obsolete and ignored — the SensorPush "
+            "API always returns Fahrenheit. Remove it from your environment. If you "
+            "had set it to 'c', past exported temperatures were wrong (double-converted); "
+            "only data recorded after this upgrade is correct.")
 
     client = SensorPushClient(EMAIL, PASSWORD)
     poller = Poller(client)
