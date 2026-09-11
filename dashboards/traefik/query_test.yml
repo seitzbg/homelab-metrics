@@ -1,7 +1,9 @@
 # promtool unit test for the "5xx Error Ratio" panel query in dashboard.json.
 # The expr below mirrors that panel with $instance -> .* and $__rate_interval ->
-# 5m. Regression guard for the clamp_min(denominator, 1) bug, which understated
-# the ratio at any request rate below 1/s.
+# 5m. Regression guard for the clamp_min(denominator, 1) bug (which understated
+# the ratio at any request rate below 1/s) and for the zero-traffic case: the
+# `/ (sum(...) > 0)` guard returns no sample rather than NaN when the request
+# rate is zero.
 #   Run: promtool test rules query_test.yml
 tests:
   - interval: 10s
@@ -12,7 +14,7 @@ tests:
       # Low traffic, all failures: one request every 10s, every one a 500 -> 100%
       # (the old clamp produced 10%).
       - eval_time: 5m
-        expr: '100 * sum(rate(traefik_entrypoint_requests_total{instance=~".*",code=~"5.."}[5m])) / sum(rate(traefik_entrypoint_requests_total{instance=~".*"}[5m]))'
+        expr: '100 * sum(rate(traefik_entrypoint_requests_total{instance=~".*",code=~"5.."}[5m])) / (sum(rate(traefik_entrypoint_requests_total{instance=~".*"}[5m])) > 0)'
         exp_samples:
           - labels: '{}'
             value: 100
@@ -26,7 +28,7 @@ tests:
     promql_expr_test:
       # Mixed outcomes: 5xx is 1 of every 4 requests -> 25%.
       - eval_time: 5m
-        expr: '100 * sum(rate(traefik_entrypoint_requests_total{instance=~".*",code=~"5.."}[5m])) / sum(rate(traefik_entrypoint_requests_total{instance=~".*"}[5m]))'
+        expr: '100 * sum(rate(traefik_entrypoint_requests_total{instance=~".*",code=~"5.."}[5m])) / (sum(rate(traefik_entrypoint_requests_total{instance=~".*"}[5m])) > 0)'
         exp_samples:
           - labels: '{}'
             value: 25
@@ -41,7 +43,20 @@ tests:
         values: '0+2x60'
     promql_expr_test:
       - eval_time: 5m
-        expr: '100 * sum(rate(traefik_entrypoint_requests_total{instance=~".*",code=~"5.."}[5m])) / sum(rate(traefik_entrypoint_requests_total{instance=~".*"}[5m]))'
+        expr: '100 * sum(rate(traefik_entrypoint_requests_total{instance=~".*",code=~"5.."}[5m])) / (sum(rate(traefik_entrypoint_requests_total{instance=~".*"}[5m])) > 0)'
         exp_samples:
           - labels: '{}'
             value: 0
+
+  - interval: 10s
+    input_series:
+      # All entrypoints idle (both series present but flat, so the total request
+      # rate is 0): the guard returns no sample — a clean no-data gap, not NaN.
+      - series: 'traefik_entrypoint_requests_total{instance="a",entrypoint="web",code="500"}'
+        values: '0+0x60'
+      - series: 'traefik_entrypoint_requests_total{instance="a",entrypoint="web",code="200"}'
+        values: '0+0x60'
+    promql_expr_test:
+      - eval_time: 5m
+        expr: '100 * sum(rate(traefik_entrypoint_requests_total{instance=~".*",code=~"5.."}[5m])) / (sum(rate(traefik_entrypoint_requests_total{instance=~".*"}[5m])) > 0)'
+        exp_samples: []
