@@ -134,3 +134,17 @@ gusts, plus a **compass**, a "wind from" cardinal readout, and a direction-over-
 time ribbon colored by 8-point sector), rain, lightning, and station health
 (battery, online state, last observation). The compass panel needs the
 `oceandatatools-compass-panel` plugin (see Prerequisites); the rest are built-in.
+
+## Testing
+
+```bash
+cd exporters/tempest
+pip install -r requirements.txt   # prometheus_client + requests
+python -m pytest test_tempest.py -v
+```
+
+`test_tempest.py` drives `TempestCollector` with a fake poller and a frozen
+clock — no cloud calls. It asserts that the API token never appears in a
+sanitized error summary, and that `tempest_station_online` drops to 0 once the
+cached observation ages past `TEMPEST_STALE_SECONDS` (and returns to 1 after a
+fresh poll). The tests skip automatically if `prometheus_client` is absent.
