@@ -71,10 +71,17 @@ Each integration lands in one of three tiers, by how much it ships:
 
 - `scripts/scrub-check.sh` — a denylist for internal hostnames/IPs/secrets, so
   nothing private slips into a dashboard or config.
-- JSON validity, `docker compose config`, and `promtool check` on every
-  compose file and scrape snippet.
+- JSON validity, `docker compose config`, and `promtool check config` on every
+  compose file and scrape snippet (an invalid snippet fails the gate).
+- `promtool test rules` on every `query_test.yml` — unit tests that pin the
+  behavior of tricky dashboard queries (error ratios, latest-night freshness,
+  CPU utilization, job-scoped Postgres/Redis) against synthetic series.
 - A real Grafana round-trip import of every `dashboard.json`, asserting each
   carries only template-variable datasources (no host-specific UIDs).
+
+Some exporters also carry their own focused tests, run separately: `pytest` in
+`exporters/tempest`, `exporters/sensorpush`, and `exporters/monifactory-rcon`,
+and `./test_prom_output.sh` in `exporters/zfs-zpool`.
 
 ## License
 
