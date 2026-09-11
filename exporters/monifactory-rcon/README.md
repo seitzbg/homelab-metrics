@@ -46,6 +46,7 @@ curl localhost:8000/metrics
 | `RCON_PASSWORD` | *(required)* | RCON password (`rcon.password` in `server.properties`) |
 | `BIND_PORT` | `8000` | port the exporter listens on |
 | `SCRAPE_INTERVAL` | `30` | seconds between RCON polls (`forge tps` + `forge entity list`) |
+| `RCON_TIMEOUT` | `5` | seconds to wait for connect/auth and for a command's first response packet; a slow-but-valid reply within this window is collected rather than dropped |
 
 ## Exposed metrics
 
@@ -64,7 +65,9 @@ carries a `type` label per loaded entity type.
 
 When a scrape fails (RCON unreachable, bad password, connection reset), only
 `minecraft_rcon_up 0` is served — that's the metric to alert on for exporter
-health.
+health. A response that arrives empty or unparseable (for example, a reply that
+never came within `RCON_TIMEOUT`, or came back garbled) is also reported as
+`minecraft_rcon_up 0`, not as a successful scrape carrying no TPS/entity data.
 
 ## Testing the parser
 

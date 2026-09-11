@@ -33,6 +33,13 @@ RCON_PORT = int(os.environ.get("RCON_PORT", "25575"))
 RCON_PASSWORD = os.environ.get("RCON_PASSWORD", "")
 BIND_PORT = int(os.environ.get("BIND_PORT", "8000"))
 SCRAPE_INTERVAL = float(os.environ.get("SCRAPE_INTERVAL", "30"))
+# Seconds to wait for the RCON connect/auth and for a command's FIRST response
+# packet. A slow-but-valid reply that arrives within this window is collected,
+# not silently dropped as an empty (but "up") scrape.
+RCON_TIMEOUT = float(os.environ.get("RCON_TIMEOUT", "5"))
+# Once a response has started, the remaining packets of a multi-packet reply
+# arrive back-to-back; this short idle gap ends the drain once they stop.
+_DRAIN_IDLE_SECONDS = 0.6
 
 # Minecraft colour codes are the section sign + one char; rcon may also emit
 # ANSI resets. Strip both so the regexes see clean text.
@@ -72,13 +79,18 @@ def _recv_exact(sock, n):
     return buf
 
 
-def _drain(sock):
-    """Read all queued response packets until the socket goes idle.
+def _drain(sock, first_timeout, idle_timeout):
+    """Read all queued response packets for a command, then join their bodies.
 
-    forge command output can span multiple RCON packets; read length-prefixed
-    packets until a recv times out (no more data), then join the bodies.
+    The first packet can be slow — the server has to run the command — so it
+    gets `first_timeout`. Once any packet has arrived, the rest of a multi-packet
+    forge response follows immediately, so subsequent reads use the short
+    `idle_timeout`: long enough to catch the next packet, short enough to return
+    promptly once the response is complete. Returns "" only when no packet
+    arrived at all within `first_timeout` (an absent response).
     """
     bodies = []
+    sock.settimeout(first_timeout)
     while True:
         try:
             raw_len = _recv_exact(sock, 4)
@@ -87,14 +99,14 @@ def _drain(sock):
         (length,) = struct.unpack("<i", raw_len)
         packet = _recv_exact(sock, length)
         # req_id (4), type (4), body (null-terminated) + pad null
-        body = packet[8:-2].decode("utf-8", "replace")
-        bodies.append(body)
+        bodies.append(packet[8:-2].decode("utf-8", "replace"))
+        sock.settimeout(idle_timeout)
     return "".join(bodies)
 
 
 def rcon_command(cmd):
-    with socket.create_connection((RCON_HOST, RCON_PORT), timeout=5) as sock:
-        sock.settimeout(5)
+    with socket.create_connection((RCON_HOST, RCON_PORT), timeout=RCON_TIMEOUT) as sock:
+        sock.settimeout(RCON_TIMEOUT)
         _send(sock, 1, _SERVERDATA_AUTH, RCON_PASSWORD)
         # auth reply: req_id == -1 means bad password
         raw_len = _recv_exact(sock, 4)
@@ -104,9 +116,10 @@ def rcon_command(cmd):
         if auth_id == -1:
             raise RconError("RCON authentication failed")
         _send(sock, 2, _SERVERDATA_EXECCOMMAND, cmd)
-        # short idle timeout to drain the (possibly multi-packet) response
-        sock.settimeout(0.6)
-        return _drain(sock)
+        # Give the command's FIRST response packet the full RCON_TIMEOUT to
+        # arrive (a busy server can lag), then drain any further packets of a
+        # multi-packet reply with the short idle timeout.
+        return _drain(sock, first_timeout=RCON_TIMEOUT, idle_timeout=_DRAIN_IDLE_SECONDS)
 
 
 def _clean(text):
@@ -119,14 +132,13 @@ def render_metrics(tps_text, entity_text):
 
     No RCON I/O here — takes the raw command output as plain strings, so it
     can be unit-tested against captured fixtures without a live server.
+
+    `minecraft_rcon_up` is 1 only when the `forge tps` output actually parsed
+    into at least one TPS sample. An absent or unparseable response — e.g. the
+    command reply never arrived within the timeout, or came back garbled —
+    reports `minecraft_rcon_up 0` instead of a successful-looking scrape that
+    carries no TPS or entity samples.
     """
-    lines = [
-        "# HELP minecraft_rcon_up 1 if the last RCON scrape succeeded.",
-        "# TYPE minecraft_rcon_up gauge",
-        "minecraft_rcon_up 1",
-        "# HELP minecraft_tps Mean ticks per second (from `forge tps`).",
-        "# TYPE minecraft_tps gauge",
-    ]
     tps_lines, mspt_lines, ent_lines = [], [], []
     total_entities = None
 
@@ -139,6 +151,12 @@ def render_metrics(tps_text, entity_text):
         tps_lines.append(f'minecraft_tps{{dimension="_overall"}} {m.group(2)}')
         mspt_lines.append(f'minecraft_mspt_milliseconds{{dimension="_overall"}} {m.group(1)}')
 
+    # `forge tps` is the primary health signal. If none of it parsed, the RCON
+    # response was absent or unusable — a slow reply dropped by too tight a
+    # timeout, or garbage — so report the scrape as failed rather than up=1.
+    if not tps_lines:
+        return _down_text()
+
     ent_raw = _clean(entity_text)
     tm = _ENT_TOTAL.search(ent_raw)
     if tm:
@@ -148,6 +166,13 @@ def render_metrics(tps_text, entity_text):
         if rm:
             ent_lines.append(f'minecraft_entities{{type="{rm.group(2)}"}} {rm.group(1)}')
 
+    lines = [
+        "# HELP minecraft_rcon_up 1 if the last RCON scrape succeeded.",
+        "# TYPE minecraft_rcon_up gauge",
+        "minecraft_rcon_up 1",
+        "# HELP minecraft_tps Mean ticks per second (from `forge tps`).",
+        "# TYPE minecraft_tps gauge",
+    ]
     lines += tps_lines
     lines += ["# HELP minecraft_mspt_milliseconds Mean tick time in milliseconds (from `forge tps`).",
               "# TYPE minecraft_mspt_milliseconds gauge"]
