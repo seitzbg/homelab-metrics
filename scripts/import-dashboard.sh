@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
-DASH="$1"; PORT=3999; NAME=hl-metrics-grafana
+# Unique container name per invocation so cleanup only ever removes the instance
+# THIS run started — never one a concurrent run owns.
+DASH="$1"; PORT=3999; NAME="hl-metrics-grafana-$$"
 
 # Static guard: every datasource reference in the file must be a template
 # variable (${DS_PROMETHEUS}, ${DS_LOKI}, or any other ${...} picker var),
@@ -24,8 +26,14 @@ if [ -n "$BAD" ]; then
   exit 1
 fi
 
-docker rm -f "$NAME" >/dev/null 2>&1 || true
-docker run -d --name "$NAME" -p $PORT:3000 \
+# This throwaway Grafana runs anonymous auth with the Admin role, so it must
+# never be reachable off-box: bind the published port to loopback only. The
+# trap guarantees the container is torn down on any exit path — success, a
+# failed import, set -e abort, or Ctrl-C — so a forced failure can't leave an
+# anonymous-admin Grafana running.
+cleanup() { docker rm -f "$NAME" >/dev/null 2>&1 || true; }
+trap cleanup EXIT INT TERM
+docker run -d --name "$NAME" -p 127.0.0.1:$PORT:3000 \
   -e GF_AUTH_ANONYMOUS_ENABLED=true -e GF_AUTH_ANONYMOUS_ORG_ROLE=Admin \
   grafana/grafana:11.2.0 >/dev/null
 for i in $(seq 1 30); do curl -sf "http://localhost:$PORT/api/health" >/dev/null && break; sleep 2; done
@@ -45,7 +53,7 @@ BODY=$(jq -n --slurpfile d "$DASH" '{dashboard: ($d[0] + {id:null}), overwrite:t
 RESP=$(curl -s -w '\n%{http_code}' -X POST "http://localhost:$PORT/api/dashboards/db" \
   -H 'Content-Type: application/json' -d "$BODY")
 CODE=$(echo "$RESP" | tail -1); OUT=$(echo "$RESP" | sed '$d')
-docker rm -f "$NAME" >/dev/null 2>&1 || true
+# Container teardown is handled by the EXIT trap (see above).
 
 if [ "$CODE" != "200" ]; then
   echo "IMPORT FAIL ($CODE): $OUT"; exit 1
