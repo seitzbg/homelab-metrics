@@ -133,11 +133,12 @@ def render_metrics(tps_text, entity_text):
     No RCON I/O here — takes the raw command output as plain strings, so it
     can be unit-tested against captured fixtures without a live server.
 
-    `minecraft_rcon_up` is 1 only when the `forge tps` output actually parsed
-    into at least one TPS sample. An absent or unparseable response — e.g. the
-    command reply never arrived within the timeout, or came back garbled —
-    reports `minecraft_rcon_up 0` instead of a successful-looking scrape that
-    carries no TPS or entity samples.
+    `minecraft_rcon_up` is 1 only when BOTH commands returned usable output:
+    at least one `forge tps` sample AND a `forge entity list` reply carrying a
+    total (`Total: 0` counts) or at least one entity row. If either command's
+    reply is absent or unparseable — the response never arrived within the
+    timeout, or came back garbled — this reports `minecraft_rcon_up 0` rather
+    than a successful-looking scrape that is missing half its data.
     """
     tps_lines, mspt_lines, ent_lines = [], [], []
     total_entities = None
@@ -151,12 +152,6 @@ def render_metrics(tps_text, entity_text):
         tps_lines.append(f'minecraft_tps{{dimension="_overall"}} {m.group(2)}')
         mspt_lines.append(f'minecraft_mspt_milliseconds{{dimension="_overall"}} {m.group(1)}')
 
-    # `forge tps` is the primary health signal. If none of it parsed, the RCON
-    # response was absent or unusable — a slow reply dropped by too tight a
-    # timeout, or garbage — so report the scrape as failed rather than up=1.
-    if not tps_lines:
-        return _down_text()
-
     ent_raw = _clean(entity_text)
     tm = _ENT_TOTAL.search(ent_raw)
     if tm:
@@ -165,6 +160,13 @@ def render_metrics(tps_text, entity_text):
         rm = _ENT_ROW.match(line)
         if rm:
             ent_lines.append(f'minecraft_entities{{type="{rm.group(2)}"}} {rm.group(1)}')
+
+    # A scrape is healthy only if BOTH commands parsed: `forge tps` yielded a
+    # sample, and `forge entity list` yielded a total or an entity row. An empty
+    # or garbled reply to either (e.g. one command's response dropped) is a
+    # partial scrape — report it down, not up=1 with half the data missing.
+    if not tps_lines or (total_entities is None and not ent_lines):
+        return _down_text()
 
     lines = [
         "# HELP minecraft_rcon_up 1 if the last RCON scrape succeeded.",

@@ -38,6 +38,21 @@ def test_render_metrics_unparseable_response_reports_down():
     assert "minecraft_tps{" not in out
 
 
+def test_render_metrics_valid_tps_but_empty_entities_reports_down():
+    # `forge tps` parsed but `forge entity list` returned nothing: a partial
+    # scrape (one command's reply dropped) must report down, not up=1.
+    out = render_metrics(_fixture("forge_tps.txt"), "")
+    assert "minecraft_rcon_up 0" in out
+    assert "minecraft_tps{" not in out
+
+
+def test_render_metrics_accepts_zero_entities():
+    # "Total: 0" is a valid (empty) entity response — a healthy scrape.
+    out = render_metrics(_fixture("forge_tps.txt"), "Total: 0")
+    assert "minecraft_rcon_up 1" in out
+    assert "minecraft_entities_total 0" in out
+
+
 # ---- RCON protocol / timeout regression (findings: slow reply, multi-packet) ----
 
 def _packet(req_id, body):
