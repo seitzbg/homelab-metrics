@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # Unique container name per invocation so cleanup only ever removes the instance
-# THIS run started — never one a concurrent run owns.
-DASH="$1"; PORT=3999; NAME="hl-metrics-grafana-$$"
+# THIS run started — never one a concurrent run owns. The host port is assigned
+# dynamically (see PORT below) so overlapping invocations don't collide either.
+DASH="$1"; NAME="hl-metrics-grafana-$$"
 
 # Static guard: every datasource reference in the file must be a template
 # variable (${DS_PROMETHEUS}, ${DS_LOKI}, or any other ${...} picker var),
@@ -33,9 +34,13 @@ fi
 # anonymous-admin Grafana running.
 cleanup() { docker rm -f "$NAME" >/dev/null 2>&1 || true; }
 trap cleanup EXIT INT TERM
-docker run -d --name "$NAME" -p 127.0.0.1:$PORT:3000 \
+# Bind to an ephemeral loopback port (127.0.0.1:0) and read back the one Docker
+# assigned, so two invocations can run at once without a host-port clash.
+docker run -d --name "$NAME" -p 127.0.0.1:0:3000 \
   -e GF_AUTH_ANONYMOUS_ENABLED=true -e GF_AUTH_ANONYMOUS_ORG_ROLE=Admin \
   grafana/grafana:11.2.0 >/dev/null
+PORT=$(docker port "$NAME" 3000/tcp | head -1 | sed 's/.*://')
+[ -n "$PORT" ] || { echo "IMPORT FAIL: could not determine mapped port for $NAME"; exit 1; }
 for i in $(seq 1 30); do curl -sf "http://localhost:$PORT/api/health" >/dev/null && break; sleep 2; done
 
 # dummy datasources so the DS_PROMETHEUS/DS_LOKI "datasource" template
