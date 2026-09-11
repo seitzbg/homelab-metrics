@@ -16,12 +16,28 @@ sp = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(sp)
 
 
-def _snapshot(last_seen_ts, sensor=None):
+def _snapshot(last_seen_ts):
     return {
-        "sensors": ({} if sensor is None else sensor),
+        "sensors": {},
         "gateways": {"gw1": {"last_seen_ts": last_seen_ts}},
         "success": True, "scrape_ts": last_seen_ts or 0.0, "errors": 0,
     }
+
+
+class _FakeClient:
+    """Returns SensorPush API-format payloads (temperature/dewpoint in °F)."""
+
+    def sensors(self):
+        return {"abc": {"name": "office", "active": True,
+                        "battery_voltage": 3.0, "rssi": -55}}
+
+    def gateways(self):
+        return {"gw1": {"last_seen": "2026-09-11T12:00:00.000Z"}}
+
+    def samples(self, limit=1):
+        return {"sensors": {"abc": [{
+            "temperature": 68.0, "dewpoint": 42.0, "humidity": 40.0,
+            "observed": "2026-09-11T12:00:00.000Z"}]}}
 
 
 def _family(poller, name):
@@ -60,13 +76,12 @@ def test_fresh_checkin_restores_active(monkeypatch):
 
 # ---- Finding 5: API temperatures are Fahrenheit and exported unchanged ----
 
-def test_temperature_and_dewpoint_exported_unchanged():
-    sensor = {"abc": {
-        "name": "office", "active": True, "battery": None, "rssi": None,
-        "temperature_f": 68.0, "humidity": 40.0, "dewpoint_f": 42.0,
-        "observed_ts": None,
-    }}
-    poller = sp.Poller(object())
-    poller.snapshot = _snapshot(last_seen_ts=1000.0, sensor=sensor)
+def test_api_fahrenheit_values_pass_through_poll_once():
+    # Exercise the real API-to-snapshot path: poll_once() must NOT re-scale the
+    # already-Fahrenheit temperature/dewpoint the API returns (a 68 reading must
+    # stay 68, not become 154.4). Driving poll_once() — not an injected snapshot
+    # — is what actually guards the removed Celsius conversion.
+    poller = sp.Poller(_FakeClient())
+    poller.poll_once()
     assert _family(poller, "sensorpush_temperature_fahrenheit").samples[0].value == 68.0
     assert _family(poller, "sensorpush_dewpoint_fahrenheit").samples[0].value == 42.0
