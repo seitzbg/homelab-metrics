@@ -112,6 +112,22 @@ def battery_soc_percent(volts):
             return p_lo + (volts - v_lo) / (v_hi - v_lo) * (p_hi - p_lo)
     return float(LTO_BATTERY_CURVE[-1][1])  # unreachable given the guards above
 
+
+def _error_summary(exc):
+    """Log-safe one-line description of a poll failure.
+
+    requests bakes the request URL — whose query string carries ?token=... —
+    into the message of HTTP, connection, and timeout errors, so the raw
+    exception text (and any traceback) must never be logged. Report only the
+    exception type and, when the error carries an HTTP response, its status
+    code — enough to see what failed without leaking the credential.
+    """
+    resp = getattr(exc, "response", None)
+    status = getattr(resp, "status_code", None)
+    if status is not None:
+        return f"{type(exc).__name__} (HTTP {status})"
+    return type(exc).__name__
+
 # obs key -> (metric name, help). The obs payload is documented as always metric,
 # so every value is exported as-is under a metric-suffixed name. Keys absent from
 # a given observation are simply skipped (defensive .get), so a station that does
@@ -223,7 +239,6 @@ class Poller:
             "obs": {},
             "obs_ts": None,
             "battery_volts": None,
-            "online": False,
             "success": False,
             "scrape_ts": 0.0,
             "errors": 0,
@@ -233,8 +248,9 @@ class Poller:
         try:
             data = self.client.station_observation()
         except Exception as exc:  # network, auth, HTTP, JSON — all non-fatal
-            # Never log the URL/params (they carry the token); the message is enough.
-            log.error("poll failed: %s", exc)
+            # requests embeds the request URL (with ?token=...) in the exception
+            # message, so log only a sanitized summary — never the raw exception.
+            log.error("poll failed: %s", _error_summary(exc))
             with self.lock:
                 self.errors += 1
                 self.snapshot["success"] = False
@@ -247,7 +263,6 @@ class Poller:
         obs_ts = latest.get("timestamp")
         name = data.get("public_name") or data.get("station_name") or str(self.client.station_id)
         now = time.time()
-        online = obs_ts is not None and (now - float(obs_ts)) <= STALE_SECONDS
 
         # Battery lives in a separate device call; a failure here must not sink the
         # weather data, so it is best-effort and keeps the last known value on error.
@@ -257,7 +272,7 @@ class Poller:
             if fetched is not None:
                 battery = float(fetched)
         except Exception as exc:
-            log.warning("battery poll failed: %s", exc)
+            log.warning("battery poll failed: %s", _error_summary(exc))
 
         with self.lock:
             self.snapshot = {
@@ -266,7 +281,6 @@ class Poller:
                 "obs": dict(latest),
                 "obs_ts": float(obs_ts) if obs_ts is not None else None,
                 "battery_volts": battery,
-                "online": online,
                 "success": True,
                 "scrape_ts": now,
                 "errors": self.errors,
@@ -337,11 +351,17 @@ class TempestCollector:
             obs_ts.add_metric(lbl, snap["obs_ts"])
             yield obs_ts
 
+        # Freshness is derived at scrape time from the cached observation
+        # timestamp, NOT from a boolean frozen during the last poll: if polls
+        # start failing, the station must go offline once the cached obs ages
+        # past the stale window, even though no new poll has run.
         online = GaugeMetricFamily(
             "tempest_station_online",
             "1 if the station reported an observation within the freshness window, 0 otherwise.",
             labels=labels)
-        online.add_metric(lbl, 1.0 if snap["online"] else 0.0)
+        latest_obs_ts = snap["obs_ts"]
+        fresh = latest_obs_ts is not None and (time.time() - latest_obs_ts) <= STALE_SECONDS
+        online.add_metric(lbl, 1.0 if fresh else 0.0)
         yield online
 
         success = GaugeMetricFamily(
