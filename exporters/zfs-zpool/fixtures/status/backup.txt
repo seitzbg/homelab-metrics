@@ -11,10 +11,10 @@ action: Replace the faulted device, or use 'zpool clear' to mark the device
 config:
 
 	NAME        STATE     READ WRITE CKSUM
-	backup      DEGRADED     0     0     0
-	  raidz1-0  DEGRADED     0     0     0
+	backup      DEGRADED  1041   512    89
+	  raidz1-0  DEGRADED  1041   512    89
 	    sdc     ONLINE       0     0     0
-	    sdd     FAULTED     12     3     7  too many errors
+	    sdd     FAULTED   1041   512    89  too many errors
 	    sde     ONLINE       0     0     0
 
 errors: No known data errors
