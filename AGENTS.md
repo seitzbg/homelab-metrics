@@ -80,8 +80,13 @@ metrics.
 
 ### Across bundles
 
-- Every compose file publishes its metrics port on all interfaces. If
-  Prometheus runs on the same host, offer to bind it to `127.0.0.1`.
+- Every compose file publishes its metrics port on all interfaces. To keep
+  it private when Prometheus shares the host: if Prometheus runs natively or
+  with host networking, bind the port to `127.0.0.1`; if Prometheus runs in a
+  bridge-networked container, it cannot reach a loopback binding, so attach
+  the exporter to Prometheus's Docker network and scrape it by service name
+  instead. A `curl` from the host passes in both cases, so step 3's `up`
+  check is the one that proves the scrape works.
 - `exporters/monifactory-rcon` and `integrations/media-clients` both publish
   host port 8000. Installing both on one host means changing the host side of
   one mapping, and the scrape target with it.
