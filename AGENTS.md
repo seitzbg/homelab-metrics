@@ -8,18 +8,24 @@ specific to that service; this file covers what holds across all of them.
 ## Installing a bundle
 
 Work through these steps in order. Each ends on a check; a step is done only
-when its check passes.
+when its check passes. Where a bundle's README gives its own scrape config or
+check, use that one: proxmox, for example, serves PVE data only from
+`/pve?target=<node>`, and its `/metrics` holds just the exporter's own
+metrics.
 
 1. **Pick the bundle and read its README.** The table in [`README.md`](README.md)
    maps each service to a folder, and the folder sits in a tier:
    - `exporters/`: an exporter this repo ships (code, `compose.yaml`,
      `.env.example`, dashboard). `exporters/zfs-zpool` is a node_exporter
      textfile collector run by a systemd timer, not a container.
-   - `integrations/`: a pinned community exporter (`compose.yaml`,
+   - `integrations/`: pinned community exporters (`compose.yaml`,
      `.env.example`, dashboard).
    - `dashboards/`: the service exposes its own metrics; the folder has the
      dashboard and a `prometheus-scrape.yml` snippet, nothing to run. See
      [`dashboards/README.md`](dashboards/README.md).
+
+   `dashboards/loki-logs` reads logs from Loki rather than Prometheus
+   metrics: skip steps 2 to 4 for it and continue at step 5.
 
    Read the folder's `README.md` end to end. Done when you can list the
    bundle's credentials, environment variables, panel plugins, and any
@@ -28,22 +34,22 @@ when its check passes.
 2. **Run the exporter** (`exporters/`, `integrations/`). Copy `.env.example`
    to `.env` and fill it in. Credentials (API tokens, passwords, account
    emails) come from the user: ask for them, and keep them in `.env` only.
-   Then `docker compose up -d` in the folder. Done when
-   `curl -s http://<host>:<port>/metrics` returns the metric prefix the README
-   documents, where `<port>` is the host side of `ports:` in `compose.yaml`.
-   The two other shapes follow their README instead: `exporters/zfs-zpool`
-   installs a script and systemd timer and is done when node_exporter serves
-   its `zfs_pool_*` metrics; a `dashboards/` bundle is done when the
-   service's own metrics endpoint answers.
+   Then `docker compose up -d` in the folder. Done when every host port in
+   the compose file's `ports:` answers `curl -s http://<host>:<port>/metrics`
+   with the metrics the README documents (`integrations/media-clients` runs
+   two exporters on two ports). The two other shapes follow their README
+   instead: `exporters/zfs-zpool` installs a script and systemd timer and is
+   done when node_exporter serves its `zfs_pool_*` metrics; a `dashboards/`
+   bundle is done when the service's own metrics endpoint answers.
 
-3. **Add the Prometheus scrape job.** For `dashboards/`, merge the folder's
-   `prometheus-scrape.yml` into `scrape_configs:` and replace `TARGET_HOST`.
-   For the others, add a job targeting `<host>:<port>`, using the job name the
-   README gives if it names one (the Tempest alert rules expect
-   `job="tempest"`), otherwise any name. `exporters/zfs-zpool` rides on the
-   existing node_exporter job, and `dashboards/loki-logs` needs only a Loki
-   datasource. Reload Prometheus. Done when `up{job="<job>"}` is 1 and a
-   query for one of the bundle's metrics returns series.
+3. **Add the Prometheus scrape job.** If the README or a
+   `prometheus-scrape.yml` gives a scrape config, use it as written and fill
+   in its placeholders (`TARGET_HOST`, `<pve-node-...>`). Otherwise add one
+   target per port from step 2, using the job name the README names, if any
+   (the Tempest alert rules expect `job="tempest"`). `exporters/zfs-zpool`
+   rides on the existing node_exporter job. Reload Prometheus. Done when
+   `up` is 1 for every new target and a query for a metric the README lists
+   returns series (for proxmox, `pve_node_info`).
 
 4. **Load rule files**, if the folder has a `*.rules.yml`. Add it to
    `rule_files:` and reload. `integrations/unifi`'s recording rules feed two
@@ -51,19 +57,26 @@ when its check passes.
    `promtool check rules <file>` passes and the rules appear on Prometheus's
    `/rules` page.
 
-5. **Install the panel plugins** the README lists, with
+5. **Connect Grafana to the data.** Grafana needs a Prometheus datasource
+   whose URL reaches the Prometheus from step 3 from where Grafana runs
+   (a Loki datasource for `dashboards/loki-logs`). Reuse one that exists, or
+   add it under Connections → Data sources. Done when the datasource's
+   "Save & test" succeeds; for loki-logs, also when a query on any of your
+   log stream labels returns lines in Explore.
+
+6. **Install the panel plugins** the README lists, with
    `grafana-cli plugins install <id>` or `GF_INSTALL_PLUGINS`, then restart
    Grafana. Only `exporters/tempest` needs any today. Done when each plugin
    shows under Administration → Plugins.
 
-6. **Import every `dashboard*.json` in the folder.** Use Grafana's
+7. **Import every `dashboard*.json` in the folder.** Use Grafana's
    Dashboards → Import, or the API:
    `POST /api/dashboards/db` with `{"dashboard": <file with "id": null>, "overwrite": false}`.
    Use `/api/dashboards/db`, not `/api/dashboards/import`: the dashboards
    select their datasource through a `DS_PROMETHEUS` (or `DS_LOKI`) template
-   variable, not import-time inputs. Point that variable at the Prometheus or
-   Loki datasource from step 3. Done when the panels show data, apart from
-   any the README says need extra setup.
+   variable, not import-time inputs. Point that variable at the datasource
+   from step 5. Done when the panels show data, apart from any the README
+   says need extra setup.
 
 ### Across bundles
 
