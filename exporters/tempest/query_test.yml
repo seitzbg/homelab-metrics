@@ -1,0 +1,65 @@
+# promtool unit tests for tempest-alerts.rules.yml.
+#   Run: promtool test rules query_test.yml
+rule_files:
+  - tempest-alerts.rules.yml
+
+evaluation_interval: 1m
+
+tests:
+  # The station stops reporting at minute 10 and the exporter keeps serving
+  # station_online=0. Pending through minute 39, firing from minute 40.
+  - interval: 1m
+    input_series:
+      - series: 'tempest_station_online{station="home",station_id="12345"}'
+        values: '1x9 0x50'
+    alert_rule_test:
+      - eval_time: 39m
+        alertname: TempestStationOffline
+        exp_alerts: []
+      - eval_time: 41m
+        alertname: TempestStationOffline
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              station: home
+              station_id: "12345"
+            exp_annotations:
+              summary: "Tempest station home has sent no observations for 30+ minutes."
+              description: >-
+                tempest_station_online is 0: the newest observation is older than
+                the exporter's stale window. Check the hub's power and WiFi, and
+                whether the station still shows live data on tempestwx.com. If it
+                does, the exporter's cloud polls are failing instead (see
+                tempest_scrape_success and the exporter logs).
+      - eval_time: 41m
+        alertname: TempestExporterMissing
+        exp_alerts: []
+
+  # A short drop (hub reboot) that recovers inside 30 minutes never fires.
+  - interval: 1m
+    input_series:
+      - series: 'tempest_station_online{station="home",station_id="12345"}'
+        values: '1x9 0x19 1x30'
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: TempestStationOffline
+        exp_alerts: []
+
+  # The exporter disappears at minute 10: no series at all.
+  - interval: 1m
+    input_series:
+      - series: 'tempest_station_online{station="home",station_id="12345"}'
+        values: '1x9'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: TempestExporterMissing
+        exp_alerts: []
+      - eval_time: 50m
+        alertname: TempestExporterMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: No tempest_station_online series for 30+ minutes.
+              description: >-
+                The Tempest exporter is down or Prometheus is no longer scraping it.

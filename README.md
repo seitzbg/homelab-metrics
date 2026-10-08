@@ -75,7 +75,8 @@ Each integration lands in one of three tiers, by how much it ships:
   compose file and scrape snippet (an invalid snippet fails the gate).
 - `promtool test rules` on every `query_test.yml` — unit tests that pin the
   behavior of tricky dashboard queries (error ratios, latest-night freshness,
-  CPU utilization, job-scoped Postgres/Redis) against synthetic series.
+  CPU utilization, job-scoped Postgres/Redis) and of the Tempest offline alerts
+  against synthetic series.
 - A real Grafana round-trip import of every `dashboard.json`, asserting each
   carries only template-variable datasources (no host-specific UIDs).
 
