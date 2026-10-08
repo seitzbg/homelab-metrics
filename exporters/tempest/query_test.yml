@@ -6,11 +6,13 @@ rule_files:
 evaluation_interval: 1m
 
 tests:
-  # The station stops reporting at minute 10 and the exporter keeps serving
-  # station_online=0. Pending through minute 39, firing from minute 40.
+  # The station stops reporting at minute 10 while the exporter stays up and
+  # keeps serving station_online=0. Pending through minute 39, firing from 40.
   - interval: 1m
     input_series:
-      - series: 'tempest_station_online{station="home",station_id="12345"}'
+      - series: 'up{job="tempest",instance="weather:9827"}'
+        values: '1x60'
+      - series: 'tempest_station_online{job="tempest",instance="weather:9827",station="home",station_id="12345"}'
         values: '1x9 0x50'
     alert_rule_test:
       - eval_time: 39m
@@ -21,6 +23,8 @@ tests:
         exp_alerts:
           - exp_labels:
               severity: warning
+              job: tempest
+              instance: "weather:9827"
               station: home
               station_id: "12345"
             exp_annotations:
@@ -32,23 +36,56 @@ tests:
                 does, the exporter's cloud polls are failing instead (see
                 tempest_scrape_success and the exporter logs).
       - eval_time: 41m
+        alertname: TempestExporterDown
+        exp_alerts: []
+      - eval_time: 41m
         alertname: TempestExporterMissing
         exp_alerts: []
 
   # A short drop (hub reboot) that recovers inside 30 minutes never fires.
   - interval: 1m
     input_series:
-      - series: 'tempest_station_online{station="home",station_id="12345"}'
+      - series: 'up{job="tempest",instance="weather:9827"}'
+        values: '1x60'
+      - series: 'tempest_station_online{job="tempest",instance="weather:9827",station="home",station_id="12345"}'
         values: '1x9 0x19 1x30'
     alert_rule_test:
       - eval_time: 45m
         alertname: TempestStationOffline
         exp_alerts: []
 
-  # The exporter disappears at minute 10: no series at all.
+  # Two exporters; the second one dies at minute 10 while the first keeps
+  # reporting. Only the dead target alerts.
   - interval: 1m
     input_series:
-      - series: 'tempest_station_online{station="home",station_id="12345"}'
+      - series: 'up{job="tempest",instance="weather-a:9827"}'
+        values: '1x60'
+      - series: 'up{job="tempest",instance="weather-b:9827"}'
+        values: '1x9 0x50'
+    alert_rule_test:
+      - eval_time: 39m
+        alertname: TempestExporterDown
+        exp_alerts: []
+      - eval_time: 41m
+        alertname: TempestExporterDown
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: tempest
+              instance: "weather-b:9827"
+            exp_annotations:
+              summary: "Tempest exporter weather-b:9827 has been unreachable for 30+ minutes."
+              description: >-
+                Prometheus cannot scrape this exporter, so its station's dashboard
+                panels are empty. Check that the container is running.
+      - eval_time: 41m
+        alertname: TempestExporterMissing
+        exp_alerts: []
+
+  # The scrape job disappears at minute 10: no up series at all.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="tempest",instance="weather:9827"}'
         values: '1x9'
     alert_rule_test:
       - eval_time: 30m
@@ -59,7 +96,9 @@ tests:
         exp_alerts:
           - exp_labels:
               severity: warning
+              job: tempest
             exp_annotations:
-              summary: No tempest_station_online series for 30+ minutes.
+              summary: No Prometheus target for job="tempest" for 30+ minutes.
               description: >-
-                The Tempest exporter is down or Prometheus is no longer scraping it.
+                Prometheus has no Tempest scrape target, so nothing is collecting
+                weather data.

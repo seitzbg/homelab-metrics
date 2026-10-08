@@ -1,5 +1,7 @@
-# Alerts for a Tempest station that stops reporting. Load into Prometheus via
-# `rule_files:` — see README.md.
+# Alerts for a Tempest station that stops reporting, or an exporter that stops
+# answering. Load into Prometheus via `rule_files:` — see README.md. The
+# exporter rules match the scrape job in README.md (job="tempest"); change it
+# here if yours is named differently.
 #
 # tempest_scrape_success is no help here: when the station goes quiet (hub off
 # WiFi, power lost) the WeatherFlow API still answers HTTP 200, just with no
@@ -25,14 +27,28 @@ groups:
             does, the exporter's cloud polls are failing instead (see
             tempest_scrape_success and the exporter logs).
 
-      # The exporter or its scrape is gone, which empties the dashboard just the
-      # same, so it alerts too.
-      - alert: TempestExporterMissing
-        expr: absent(tempest_station_online)
+      # Per scrape target, so with several exporters the one that died alerts
+      # even while the others keep reporting.
+      - alert: TempestExporterDown
+        expr: up{job="tempest"} == 0
         for: 30m
         labels:
           severity: warning
         annotations:
-          summary: No tempest_station_online series for 30+ minutes.
+          summary: "Tempest exporter {{ $labels.instance }} has been unreachable for 30+ minutes."
           description: >-
-            The Tempest exporter is down or Prometheus is no longer scraping it.
+            Prometheus cannot scrape this exporter, so its station's dashboard
+            panels are empty. Check that the container is running.
+
+      # No target left in the job: the scrape config was removed or renamed, or
+      # service discovery lost the exporter.
+      - alert: TempestExporterMissing
+        expr: absent(up{job="tempest"})
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: No Prometheus target for job="tempest" for 30+ minutes.
+          description: >-
+            Prometheus has no Tempest scrape target, so nothing is collecting
+            weather data.
