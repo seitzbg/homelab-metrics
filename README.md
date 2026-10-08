@@ -65,6 +65,9 @@ Each integration lands in one of three tiers, by how much it ships:
    Prometheus (or Loki) datasource for the datasource variable.
 4. Read the folder's `README.md` for prerequisites and any per-service gotchas.
 
+Installing with a coding agent? Point it at [`AGENTS.md`](./AGENTS.md): the
+same steps, each with a check that proves it worked.
+
 ## Contributing / verifying
 
 `make verify` runs the full gate used to build this repo:
