@@ -152,7 +152,8 @@ variable at your Prometheus datasource. Panels cover current conditions
 gusts, plus a **compass**, a "wind from" cardinal readout, and a gust chart
 with direction arrows), rain, lightning, and station health (battery, online
 state, last observation). The compass and the gust & direction chart each need
-a panel plugin (see Prerequisites); the rest are built-in.
+a panel plugin (see Prerequisites); the rest are built-in. The gust & direction
+chart plots a single station; if Prometheus scrapes several, it shows the first.
 
 ## Alerting
 
