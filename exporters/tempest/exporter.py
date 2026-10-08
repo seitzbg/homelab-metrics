@@ -51,7 +51,7 @@ Metrics (all gauges unless noted, labeled by station name + id):
 
 Config (environment):
   TEMPEST_TOKEN            (required) WeatherFlow personal access token
-  TEMPEST_STATION_ID       (required) numeric station id (e.g. 230296)
+  TEMPEST_STATION_ID       (required) numeric station id (e.g. 12345)
   TEMPEST_DEVICE_ID        optional Tempest device id for battery; auto-discovered if unset
   EXPORTER_PORT            default 9827
   POLL_INTERVAL            seconds between cloud polls, default 60
