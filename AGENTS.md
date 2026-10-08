@@ -102,9 +102,11 @@ metrics.
   them in a virtualenv with the folder's `requirements.txt`.
 - A dashboard query with non-obvious behavior gets a promtool case in the
   folder's `query_test.yml`.
-- Dashboards reference datasources only through the `${DS_PROMETHEUS}` /
-  `${DS_LOKI}` variables. Hostnames, IPs, and job names in queries are
-  generic or templated, so the dashboard works on any install.
+- Dashboards reach Prometheus and Loki only through the `${DS_PROMETHEUS}` /
+  `${DS_LOKI}` template variables and carry no `__inputs`; the built-in
+  Grafana annotation datasource (`-- Grafana --`) stays as it is. Hostnames,
+  IPs, and job names in queries are generic or templated, so the dashboard
+  works on any install.
 - When a change alters setup or behavior, update the bundle's `README.md`,
   and the table in the top-level `README.md` when bundles are added or
   renamed.
