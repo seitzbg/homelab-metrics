@@ -25,11 +25,14 @@ by) the cloud API.
   **station id** (visible in the URL at `tempestwx.com/station/<id>`).
 - A **personal access token**: tempestwx.com → **Settings → Data Authorizations
   → Create Token**.
-- For the **Wind compass** panel only, the Grafana community panel plugin
-  [`oceandatatools-compass-panel`](https://grafana.com/grafana/plugins/oceandatatools-compass-panel/)
-  (`grafana-cli plugins install oceandatatools-compass-panel`, or add it to
-  `GF_INSTALL_PLUGINS`). Every other panel uses built-in Grafana panels; without
-  the plugin only that one compass panel shows "plugin not found".
+- Two Grafana panel plugins, each needed by one panel only:
+  - **Wind compass**: [`oceandatatools-compass-panel`](https://grafana.com/grafana/plugins/oceandatatools-compass-panel/)
+  - **Wind gust & direction**: [`volkovlabs-echarts-panel`](https://grafana.com/grafana/plugins/volkovlabs-echarts-panel/)
+    (Business Charts; tested with 7.2.5)
+
+  Install with `grafana-cli plugins install <id>`, or add them to
+  `GF_INSTALL_PLUGINS`. Every other panel uses built-in Grafana panels; without
+  a plugin only its own panel shows "plugin not found".
 
 ## Quickstart
 
@@ -136,10 +139,10 @@ themselves are failing.
 `dashboard.json` — import into Grafana and point the `Prometheus` template
 variable at your Prometheus datasource. Panels cover current conditions
 (temperature / feels-like / humidity / pressure / UV / solar), wind (speed and
-gusts, plus a **compass**, a "wind from" cardinal readout, and a direction-over-
-time ribbon colored by 8-point sector), rain, lightning, and station health
-(battery, online state, last observation). The compass panel needs the
-`oceandatatools-compass-panel` plugin (see Prerequisites); the rest are built-in.
+gusts, plus a **compass**, a "wind from" cardinal readout, and a gust chart
+with direction arrows), rain, lightning, and station health (battery, online
+state, last observation). The compass and the gust & direction chart each need
+a panel plugin (see Prerequisites); the rest are built-in.
 
 ## Alerting
 
