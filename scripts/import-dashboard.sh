@@ -27,6 +27,14 @@ if [ -n "$BAD" ]; then
   exit 1
 fi
 
+# A legacy `__inputs` datasource entry makes Grafana's UI import substitute
+# the chosen datasource UID for every ${DS_PROMETHEUS} reference, so the
+# datasource variable stops controlling the panels after import.
+if [ "$(jq '(.__inputs // []) | length' "$DASH")" != "0" ]; then
+  echo "IMPORT FAIL: __inputs present; select the datasource through a template variable instead"
+  exit 1
+fi
+
 # This throwaway Grafana runs anonymous auth with the Admin role, so it must
 # never be reachable off-box: bind the published port to loopback only. The
 # trap guarantees the container is torn down on any exit path — success, a
