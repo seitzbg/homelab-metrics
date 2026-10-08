@@ -71,7 +71,52 @@ tests:
         values: '1+0x5'
     promql_expr_test:
       - eval_time: 3m
-        expr: 'label_replace((node_memory_active_bytes + node_memory_wired_bytes + node_memory_laundry_bytes) / (node_memory_active_bytes + node_memory_wired_bytes + node_memory_laundry_bytes + node_memory_inactive_bytes + node_memory_cache_bytes + node_memory_free_bytes) * on(instance) group_left(nodename) node_uname_info, "name", "$1", "nodename", "(.*)") and on(name) label_replace(pve_guest_info{instance="pve1", type="qemu"}, "name", "$1", "name", "([^.]+).*")'
+        expr: 'label_replace((node_memory_active_bytes + node_memory_wired_bytes + node_memory_laundry_bytes) / (node_memory_active_bytes + node_memory_wired_bytes + node_memory_laundry_bytes + node_memory_inactive_bytes + node_memory_cache_bytes + node_memory_free_bytes) * on(instance, job) group_left(nodename) node_uname_info, "name", "$1", "nodename", "(.*)") and on(name) label_replace(pve_guest_info{instance="pve1", type="qemu"}, "name", "$1", "name", "([^.]+).*")'
         exp_samples:
           - labels: '{instance="fw:9100", job="node", name="fw", nodename="fw"}'
+            value: 0.4
+
+  # The same FreeBSD guest scraped under two jobs (e.g. "node" and a
+  # dedicated firewall job): the node_uname_info join matches on (instance,
+  # job), so each job's series pairs with its own uname and the query does
+  # not fail with a many-to-many match.
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_active_bytes{instance="fw:9100",job="node"}'
+        values: '2+0x5'
+      - series: 'node_memory_wired_bytes{instance="fw:9100",job="node"}'
+        values: '1+0x5'
+      - series: 'node_memory_laundry_bytes{instance="fw:9100",job="node"}'
+        values: '1+0x5'
+      - series: 'node_memory_inactive_bytes{instance="fw:9100",job="node"}'
+        values: '2+0x5'
+      - series: 'node_memory_cache_bytes{instance="fw:9100",job="node"}'
+        values: '1+0x5'
+      - series: 'node_memory_free_bytes{instance="fw:9100",job="node"}'
+        values: '3+0x5'
+      - series: 'node_uname_info{instance="fw:9100",job="node",nodename="fw"}'
+        values: '1+0x5'
+      - series: 'node_memory_active_bytes{instance="fw:9100",job="firewall"}'
+        values: '2+0x5'
+      - series: 'node_memory_wired_bytes{instance="fw:9100",job="firewall"}'
+        values: '1+0x5'
+      - series: 'node_memory_laundry_bytes{instance="fw:9100",job="firewall"}'
+        values: '1+0x5'
+      - series: 'node_memory_inactive_bytes{instance="fw:9100",job="firewall"}'
+        values: '2+0x5'
+      - series: 'node_memory_cache_bytes{instance="fw:9100",job="firewall"}'
+        values: '1+0x5'
+      - series: 'node_memory_free_bytes{instance="fw:9100",job="firewall"}'
+        values: '3+0x5'
+      - series: 'node_uname_info{instance="fw:9100",job="firewall",nodename="fw"}'
+        values: '1+0x5'
+      - series: 'pve_guest_info{id="qemu/101",instance="pve1",name="fw.example",type="qemu"}'
+        values: '1+0x5'
+    promql_expr_test:
+      - eval_time: 3m
+        expr: 'label_replace((node_memory_active_bytes + node_memory_wired_bytes + node_memory_laundry_bytes) / (node_memory_active_bytes + node_memory_wired_bytes + node_memory_laundry_bytes + node_memory_inactive_bytes + node_memory_cache_bytes + node_memory_free_bytes) * on(instance, job) group_left(nodename) node_uname_info, "name", "$1", "nodename", "(.*)") and on(name) label_replace(pve_guest_info{instance="pve1", type="qemu"}, "name", "$1", "name", "([^.]+).*")'
+        exp_samples:
+          - labels: '{instance="fw:9100", job="node", name="fw", nodename="fw"}'
+            value: 0.4
+          - labels: '{instance="fw:9100", job="firewall", name="fw", nodename="fw"}'
             value: 0.4
