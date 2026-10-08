@@ -1,0 +1,38 @@
+# Alerts for a Tempest station that stops reporting. Load into Prometheus via
+# `rule_files:` — see README.md.
+#
+# tempest_scrape_success is no help here: when the station goes quiet (hub off
+# WiFi, power lost) the WeatherFlow API still answers HTTP 200, just with no
+# observations, so the polls keep succeeding. tempest_station_online — 1 while
+# the newest observation is fresher than the exporter's TEMPEST_STALE_SECONDS —
+# is the signal that drops.
+groups:
+  - name: tempest
+    rules:
+      # 30m rides out a hub reboot or firmware update. Per series, so with one
+      # exporter per station each station alerts on its own.
+      - alert: TempestStationOffline
+        expr: tempest_station_online < 1
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Tempest station {{ $labels.station }} has sent no observations for 30+ minutes."
+          description: >-
+            tempest_station_online is 0: the newest observation is older than
+            the exporter's stale window. Check the hub's power and WiFi, and
+            whether the station still shows live data on tempestwx.com. If it
+            does, the exporter's cloud polls are failing instead (see
+            tempest_scrape_success and the exporter logs).
+
+      # The exporter or its scrape is gone, which empties the dashboard just the
+      # same, so it alerts too.
+      - alert: TempestExporterMissing
+        expr: absent(tempest_station_online)
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: No tempest_station_online series for 30+ minutes.
+          description: >-
+            The Tempest exporter is down or Prometheus is no longer scraping it.

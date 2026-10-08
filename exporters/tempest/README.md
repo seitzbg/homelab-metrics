@@ -141,6 +141,22 @@ time ribbon colored by 8-point sector), rain, lightning, and station health
 (battery, online state, last observation). The compass panel needs the
 `oceandatatools-compass-panel` plugin (see Prerequisites); the rest are built-in.
 
+## Alerting
+
+`tempest-alerts.rules.yml` holds two Prometheus alerting rules. Add it to
+`rule_files:` in your `prometheus.yml` (or the equivalent for your Prometheus
+Operator / Alloy setup) and route the alerts through your Alertmanager:
+
+- **`TempestStationOffline`**: `tempest_station_online` has been 0 for 30
+  minutes. The station has stopped reporting, typically because the hub lost
+  power or WiFi.
+- **`TempestExporterMissing`**: no `tempest_station_online` series for 30
+  minutes. The exporter or its scrape is gone.
+
+Don't alert on `tempest_scrape_success` for station outages. When the station
+goes quiet, the WeatherFlow API still answers HTTP 200 with no observations, so
+the polls keep succeeding; only `tempest_station_online` drops.
+
 ## Testing
 
 ```bash
@@ -158,3 +174,8 @@ poll serves the observation and battery; and that an offline station, or a run
 of failed polls, never serves a frozen battery reading. The tests skip
 automatically if `prometheus_client` is absent.
 
+`query_test.yml` unit-tests the alert rules with promtool (`make verify` runs it):
+
+```bash
+promtool test rules query_test.yml
+```
