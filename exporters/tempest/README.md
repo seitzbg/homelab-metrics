@@ -43,6 +43,16 @@ docker compose up -d
 curl localhost:9827/metrics
 ```
 
+Then add a scrape job to your Prometheus config (replace `TARGET_HOST`). The
+alert rules below match `job="tempest"`:
+
+```yaml
+scrape_configs:
+  - job_name: tempest
+    static_configs:
+      - targets: ['TARGET_HOST:9827']
+```
+
 ## Configuration (environment)
 
 | Variable | Default | Description |
@@ -146,15 +156,21 @@ a panel plugin (see Prerequisites); the rest are built-in.
 
 ## Alerting
 
-`tempest-alerts.rules.yml` holds two Prometheus alerting rules. Add it to
+`tempest-alerts.rules.yml` holds three Prometheus alerting rules. Add it to
 `rule_files:` in your `prometheus.yml` (or the equivalent for your Prometheus
 Operator / Alloy setup) and route the alerts through your Alertmanager:
 
 - **`TempestStationOffline`**: `tempest_station_online` has been 0 for 30
   minutes. The station has stopped reporting, typically because the hub lost
   power or WiFi.
-- **`TempestExporterMissing`**: no `tempest_station_online` series for 30
-  minutes. The exporter or its scrape is gone.
+- **`TempestExporterDown`**: `up{job="tempest"}` has been 0 for 30 minutes.
+  Prometheus cannot scrape that exporter. This is per target, so with several
+  stations the one whose exporter died still alerts.
+- **`TempestExporterMissing`**: no `up{job="tempest"}` series at all for 30
+  minutes. The scrape job was removed or renamed.
+
+The two exporter rules assume the scrape job is named `tempest`, as in the
+Quickstart. If yours differs, change `job="tempest"` in the rule file.
 
 Don't alert on `tempest_scrape_success` for station outages. When the station
 goes quiet, the WeatherFlow API still answers HTTP 200 with no observations, so
