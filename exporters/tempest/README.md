@@ -51,7 +51,7 @@ curl localhost:9827/metrics
 | `POLL_INTERVAL` | `60` | seconds between WeatherFlow cloud polls |
 | `TEMPEST_API_BASE` | `https://swd.weatherflow.com/swd/rest` | WeatherFlow REST API base URL |
 | `TEMPEST_HTTP_TIMEOUT` | `20` | per-request HTTP timeout, seconds |
-| `TEMPEST_STALE_SECONDS` | `300` | mark the station offline if the newest observation is older than this |
+| `TEMPEST_STALE_SECONDS` | `300` | mark the station offline, and drop the battery series, once the newest observation is older than this |
 
 ## Units
 
@@ -125,6 +125,12 @@ full-performance Mode 0; lower voltages throttle sensor cadence. The battery pol
 is best-effort: if the device call fails it keeps the last known value and never
 sinks the weather metrics.
 
+The device endpoint returns its last observation however old it is, so the
+exporter checks that observation's timestamp and drops both battery series once
+it is older than `TEMPEST_STALE_SECONDS`. An offline station shows no battery
+reading rather than a frozen one, and that holds even while the polls
+themselves are failing.
+
 ## Dashboard
 
 `dashboard.json` — import into Grafana and point the `Prometheus` template
@@ -143,8 +149,12 @@ pip install -r requirements.txt   # prometheus_client + requests
 python -m pytest test_tempest.py -v
 ```
 
-`test_tempest.py` drives `TempestCollector` with a fake poller and a frozen
-clock — no cloud calls. It asserts that the API token never appears in a
-sanitized error summary, and that `tempest_station_online` drops to 0 once the
-cached observation ages past `TEMPEST_STALE_SECONDS` (and returns to 1 after a
-fresh poll). The tests skip automatically if `prometheus_client` is absent.
+`test_tempest.py` makes no cloud calls: it swaps the client's HTTP session for
+a stub of the WeatherFlow API and freezes the clock where needed. It asserts
+that the API token never appears in a sanitized error summary; that
+`tempest_station_online` drops to 0 once the cached observation ages past
+`TEMPEST_STALE_SECONDS` (and returns to 1 after a fresh poll); that a successful
+poll serves the observation and battery; and that an offline station, or a run
+of failed polls, never serves a frozen battery reading. The tests skip
+automatically if `prometheus_client` is absent.
+

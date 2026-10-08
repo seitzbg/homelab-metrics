@@ -41,6 +41,8 @@ Metrics (all gauges unless noted, labeled by station name + id):
   tempest_lightning_strike_last_timestamp_seconds
   tempest_battery_volts                      (from the device obs; Mode 0 >=2.455V)
   tempest_battery_percent                    (SOC estimate from V; matches HA's %)
+    Both battery series are omitted once the device obs is older than the
+    STALE window, so an offline station shows no battery instead of a frozen one.
   tempest_last_observation_timestamp_seconds
   tempest_station_online                     1/0 (obs fresher than STALE window)
   tempest_scrape_success                     1/0 (last poll)
@@ -205,11 +207,13 @@ class TempestClient:
                     return dev.get("device_id")
         return None
 
-    def battery_volts(self):
-        """Latest Tempest battery voltage (V), or None if unavailable.
+    def battery_reading(self):
+        """Latest Tempest battery reading as (volts, obs epoch), or None.
 
         Battery is absent from the station observation, so this reads the
-        per-device obs_st array and pulls the battery-voltage slot.
+        per-device obs_st array: slot 0 is the obs epoch, BATTERY_OBS_INDEX the
+        voltage. The endpoint returns the last obs however old it is, so the
+        epoch is what tells a live reading from a frozen one.
         """
         if self.device_id is None:
             self.device_id = self._resolve_device_id()
@@ -223,7 +227,9 @@ class TempestClient:
         row = obs[0] if obs else None
         if not row or len(row) <= BATTERY_OBS_INDEX:
             return None
-        return row[BATTERY_OBS_INDEX]
+        if row[0] is None or row[BATTERY_OBS_INDEX] is None:
+            return None
+        return float(row[BATTERY_OBS_INDEX]), float(row[0])
 
 
 class Poller:
@@ -239,6 +245,7 @@ class Poller:
             "obs": {},
             "obs_ts": None,
             "battery_volts": None,
+            "battery_ts": None,
             "success": False,
             "scrape_ts": 0.0,
             "errors": 0,
@@ -267,10 +274,11 @@ class Poller:
         # Battery lives in a separate device call; a failure here must not sink the
         # weather data, so it is best-effort and keeps the last known value on error.
         battery = self.snapshot.get("battery_volts")
+        battery_ts = self.snapshot.get("battery_ts")
         try:
-            fetched = self.client.battery_volts()
+            fetched = self.client.battery_reading()
             if fetched is not None:
-                battery = float(fetched)
+                battery, battery_ts = fetched
         except Exception as exc:
             log.warning("battery poll failed: %s", _error_summary(exc))
 
@@ -281,12 +289,13 @@ class Poller:
                 "obs": dict(latest),
                 "obs_ts": float(obs_ts) if obs_ts is not None else None,
                 "battery_volts": battery,
+                "battery_ts": battery_ts,
                 "success": True,
                 "scrape_ts": now,
                 "errors": self.errors,
             }
-        log.info("poll ok: station=%s fields=%d online=%s battery=%sV",
-                 name, len(latest), online, battery)
+        log.info("poll ok: station=%s fields=%d battery=%sV",
+                 name, len(latest), battery)
 
     def run(self):
         # Sleep first: main() primes an initial poll synchronously, so looping
@@ -327,7 +336,10 @@ class TempestCollector:
             fam.add_metric(lbl, float(value))
             yield fam
 
-        if snap.get("battery_volts") is not None:
+        # Freshness is judged at scrape time, so a battery reading also ages out
+        # when the polls themselves keep failing.
+        battery_ts = snap.get("battery_ts")
+        if battery_ts is not None and time.time() - battery_ts <= STALE_SECONDS:
             battery = GaugeMetricFamily(
                 "tempest_battery_volts",
                 "Tempest station battery voltage (volts). >=2.455 is full-performance "
