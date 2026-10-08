@@ -24,12 +24,12 @@ _spec.loader.exec_module(tempest)
 
 
 class _FakeClient:
-    station_id = "230296"
+    station_id = "12345"
 
 
 def _snapshot(obs_ts):
     return {
-        "station": "home", "station_id": "230296", "obs": {},
+        "station": "home", "station_id": "12345", "obs": {},
         "obs_ts": obs_ts, "battery_volts": None,
         "success": True, "scrape_ts": obs_ts or 0.0, "errors": 0,
     }
@@ -71,7 +71,7 @@ class _WeatherFlowAPI:
         if "/observations/station/" in url:
             obs = [] if self.obs_ts is None else [
                 {"timestamp": self.obs_ts, "air_temperature": 12.5}]
-            return _Response({"station_id": 230296, "public_name": "home", "obs": obs})
+            return _Response({"station_id": 12345, "public_name": "home", "obs": obs})
         if "/stations/" in url:
             return _Response({"stations": [{"devices": [
                 {"device_type": "ST", "device_id": 7}]}]})
@@ -83,7 +83,7 @@ class _WeatherFlowAPI:
 
 
 def _poller(api):
-    client = tempest.TempestClient("token", "230296")
+    client = tempest.TempestClient("token", "12345")
     client.session = api
     return tempest.Poller(client)
 
