@@ -1400,7 +1400,7 @@
         {
           "refId": "B",
           "legendFormat": "{{name}} (qemu)",
-          "expr": "label_replace((1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * on(instance) group_left(nodename) node_uname_info, \"name\", \"$1\", \"nodename\", \"(.*)\") and on(name) label_replace(pve_guest_info{instance=\"$instance\", type=\"qemu\"}, \"name\", \"$1\", \"name\", \"([^.]+).*\")",
+          "expr": "label_replace((1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * on(instance, job) group_left(nodename) node_uname_info, \"name\", \"$1\", \"nodename\", \"(.*)\") and on(name) label_replace(pve_guest_info{instance=\"$instance\", type=\"qemu\"}, \"name\", \"$1\", \"name\", \"([^.]+).*\")",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
@@ -1412,7 +1412,7 @@
         {
           "refId": "C",
           "legendFormat": "{{name}} (qemu)",
-          "expr": "label_replace((node_memory_active_bytes + node_memory_wired_bytes + node_memory_laundry_bytes) / (node_memory_active_bytes + node_memory_wired_bytes + node_memory_laundry_bytes + node_memory_inactive_bytes + node_memory_cache_bytes + node_memory_free_bytes) * on(instance) group_left(nodename) node_uname_info, \"name\", \"$1\", \"nodename\", \"(.*)\") and on(name) label_replace(pve_guest_info{instance=\"$instance\", type=\"qemu\"}, \"name\", \"$1\", \"name\", \"([^.]+).*\")",
+          "expr": "label_replace((node_memory_active_bytes + node_memory_wired_bytes + node_memory_laundry_bytes) / (node_memory_active_bytes + node_memory_wired_bytes + node_memory_laundry_bytes + node_memory_inactive_bytes + node_memory_cache_bytes + node_memory_free_bytes) * on(instance, job) group_left(nodename) node_uname_info, \"name\", \"$1\", \"nodename\", \"(.*)\") and on(name) label_replace(pve_guest_info{instance=\"$instance\", type=\"qemu\"}, \"name\", \"$1\", \"name\", \"([^.]+).*\")",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
