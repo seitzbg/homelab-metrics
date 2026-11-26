@@ -1,0 +1,12 @@
+# Daily loader for the finished SleepHQ nights. See README.md, "Daily load".
+[Unit]
+Description=Load the finished SleepHQ nights into Prometheus
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+# PROM_CONTAINER, PROM_DATA_DIR, PROM_IMAGE, LOOKBACK_DAYS (all optional).
+EnvironmentFile=-/etc/default/sleephq-selfheal
+ExecStart=/usr/local/bin/sleephq-selfheal.sh

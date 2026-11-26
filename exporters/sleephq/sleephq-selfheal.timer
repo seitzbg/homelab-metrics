@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily SleepHQ finished-night load
+
+[Timer]
+# Host local time. Pick an hour after your machine has uploaded the night.
+OnCalendar=*-*-* 16:30:00
+RandomizedDelaySec=900
+Persistent=true
+
+[Install]
+WantedBy=timers.target

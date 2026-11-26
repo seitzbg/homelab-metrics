@@ -8,9 +8,14 @@ OAuth2 client id/secret (password grant), polls the API once per
 `POLL_INTERVAL` for each machine's most recent night, caches the result, and
 serves it as Prometheus metrics.
 
-Only the **latest night** is ever served live: Prometheus rejects scraped
+Only the **latest record** is ever served live: Prometheus rejects scraped
 samples with past timestamps, so a `/metrics` endpoint can never publish
-history. Loading years of prior nights is a one-time, out-of-band step — see
+history. That record is also a partial upload for most of the time it is the
+latest, so the dashboard's nightly panels do not read the live scrape at all.
+They read one finished sample per night, loaded once a day by
+`sleephq-selfheal.sh` — see [Live scrape vs finished nights](#live-scrape-vs-finished-nights)
+and [Daily load](#daily-load). Set that up, or the nightly panels stay empty.
+Years of prior nights are loaded the same way, once — see
 [Historical backfill](#historical-backfill).
 
 ## Prerequisites
@@ -41,6 +46,7 @@ curl localhost:9826/metrics
 | `SLEEPHQ_CLIENT_SECRET` | *(required)* | SleepHQ OAuth2 client secret |
 | `EXPORTER_PORT` | `9826` | port the exporter listens on |
 | `POLL_INTERVAL` | `21600` (6h) | seconds between SleepHQ API polls |
+| `POLL_RETRY_INTERVAL` | `300` (5m) | seconds until the next poll after a failed one, so a short DNS or network outage does not leave the exporter stale until the next `POLL_INTERVAL` tick |
 | `SLEEPHQ_HTTP_TIMEOUT` | `30` | per-request HTTP timeout, seconds |
 
 ## Exposed metrics
@@ -71,10 +77,86 @@ Field sets are **disjoint per device type**: an AirSense record carries no
 always emitted, even before the first successful poll or with invalid
 credentials, and are the metrics to alert on for exporter health.
 
-Because a night's value is republished until the next night lands, each
-night appears in Prometheus as a flat line spanning the following day rather
-than a single point. Graph these with a daily step and `last_over_time`, not
-`rate`.
+## Live scrape vs finished nights
+
+Two sources write the same series, and they mean different things:
+
+- **Live scrape**: whatever the newest SleepHQ record holds right now. The
+  machine's SD card uploads incrementally, so a record first appears as a
+  stub and grows for hours; as soon as the next record appears the exporter
+  switches to it. The live series therefore never settles on a night's final
+  value. On the dashboard it feeds only the *Data age* and *Exporter* tiles.
+- **Finished nights**: one sample at exactly **12:00:00 UTC** of each date,
+  loaded as TSDB blocks by `backfill.py` (by hand for history, daily by
+  `sleephq-selfheal.sh`).
+
+Every nightly panel selects the finished sample and nothing else:
+
+```promql
+last_over_time(
+  (sleephq_ahi{type="total"} offset 12h
+    and on(machine, machine_id)
+    (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))
+  [1d:1d])
+```
+
+`timestamp(...) == time() - 43200` is true only when the sample 12h before
+the evaluation instant sits exactly on that instant, which a periodic scrape
+practically never does. That only works when the evaluation instant is 00:00
+UTC, and Grafana aligns a daily step to the **browser's** midnight, not UTC.
+The `[1d:1d]` subquery fixes that: Prometheus aligns subquery steps to
+absolute multiples of the step, so the inner expression is always evaluated
+at 00:00 UTC, once per day. Keep the wrapper on every nightly query. A plain
+`last_over_time(...[25h])` is what this replaced: at a daily step it returned
+the newest live stub (about 2h of usage) instead of the finished night
+(7-14h). `query_test.yml` holds promtool cases for both behaviors.
+
+A night shows on the graphs after the daily load that follows it.
+
+## Daily load
+
+`sleephq-selfheal.sh` re-emits the last `LOOKBACK_DAYS` days from SleepHQ
+with `backfill.py`, builds TSDB blocks with `promtool`, deletes the previous
+12:00 UTC sample of each machine and night it is about to reload (so a record
+SleepHQ revised later converges on its final value), copies the blocks into
+Prometheus's data directory and restarts Prometheus.
+
+Requirements:
+
+- Prometheus runs in Docker on the same host as this folder, and the script
+  runs as a user that can write its data directory (root, normally).
+- Prometheus is started with `--web.enable-admin-api`, which the delete
+  needs. The script calls it from inside the container, so the API does not
+  have to be reachable from anywhere else; do not publish it to a network you
+  do not trust.
+- `SCRAPE_LABELS` in `backfill.py` matches your scrape job (see
+  [Historical backfill](#historical-backfill)).
+
+Because every run restarts Prometheus, a
+[dedicated long-retention instance](#optional-a-dedicated-long-retention-prometheus)
+for the `sleephq` job is the comfortable way to run this.
+
+```bash
+ln -s "$PWD/sleephq-selfheal.sh" /usr/local/bin/sleephq-selfheal.sh
+install -m 0644 sleephq-selfheal.service sleephq-selfheal.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now sleephq-selfheal.timer
+```
+
+The script finds `compose.yaml`, `.env` and `backfill.py` beside itself, so
+link it rather than copy it. Settings go in `/etc/default/sleephq-selfheal`:
+
+| Variable | Default | Description |
+|---|---|---|
+| `PROM_CONTAINER` | `prometheus` | Prometheus container to load into |
+| `PROM_DATA_DIR` | that container's `/prometheus` mount | host path of its TSDB directory |
+| `PROM_IMAGE` | that container's image | image that provides `promtool` |
+| `LOOKBACK_DAYS` | `8` | days reloaded per run; covers late revisions and a week of missed runs |
+
+The timer fires at 16:30 host time; edit `OnCalendar` to an hour after your
+machine has normally uploaded the night. To load a night sooner:
+`systemctl start sleephq-selfheal.service`. Done when the unit exits 0 and
+the *Usage* panel shows yesterday's night.
 
 ## Caveat: `usage` is not "hours slept"
 
@@ -112,7 +194,9 @@ explicit per-night timestamps, for loading into Prometheus via `promtool
 tsdb create-blocks-from openmetrics`. This is necessary because Prometheus
 rejects scraped samples with past timestamps — a `/metrics` endpoint can
 only ever publish the current value, so `exporter.py` only ever serves the
-latest night; everything older has to be loaded once, out of band.
+latest record. Each night is written as one sample at 12:00 UTC of its date,
+which is the sample the dashboard reads. Run it once by hand to load the
+nights from before you installed the [daily load](#daily-load).
 
 ```bash
 export SLEEPHQ_CLIENT_ID=...
@@ -151,11 +235,11 @@ history and the live series into two disjoint series that never unify.
 
 ### Filling a gap
 
-The exporter only ever publishes the **latest** night. Any night that
-scrolled past while the exporter was down is captured by nothing and must
-be backfilled explicitly. Use `--from-date`/`--to-date` to emit only the
-missing nights, rather than regenerating the whole history and stacking
-overlapping blocks on top of the existing ones:
+The daily load covers the last `LOOKBACK_DAYS` days, so a short outage heals
+itself. A night older than that which was never loaded must be backfilled
+explicitly. Use `--from-date`/`--to-date` to emit only the missing nights,
+rather than regenerating the whole history and stacking overlapping blocks
+on top of the existing ones:
 
 ```bash
 python3 backfill.py --from-date 2026-07-18 --to-date 2026-07-19 --out gap.openmetrics
@@ -189,3 +273,7 @@ report the duration you set, not `15d`.
 variable at your Prometheus datasource (or the dedicated long-retention one,
 if you set one up). Panels: latest-night summary, AHI/usage/leak trends,
 pressure/leak/flow percentile bands, and O2 Ring vitals (if applicable).
+
+All of them except *Data age* and *Exporter* need the finished-night samples
+from the [daily load](#daily-load) (and the [backfill](#historical-backfill)
+for older nights); with only the live scrape they show no data.
