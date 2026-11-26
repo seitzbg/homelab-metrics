@@ -131,7 +131,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d]) and on(machine,machine_id) (last_over_time((sleephq_usage_seconds{machine=~\"$machine\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d]) >= 3600))[10d:1d])",
+          "expr": "last_over_time((last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h and (timestamp(sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h) == time() - 43200))[1d:1d]) and on(machine,machine_id) (last_over_time((sleephq_usage_seconds{machine=~\"$machine\"} offset 12h and (timestamp(sleephq_usage_seconds{machine=~\"$machine\"} offset 12h) == time() - 43200))[1d:1d]) >= 3600))[10d:1d])",
           "interval": "1d",
           "instant": true
         }
@@ -202,7 +202,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((last_over_time((sleephq_usage_seconds{machine=~\"$machine\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d]) >= 3600)[10d:1d]) / 3600",
+          "expr": "last_over_time((last_over_time((sleephq_usage_seconds{machine=~\"$machine\"} offset 12h and (timestamp(sleephq_usage_seconds{machine=~\"$machine\"} offset 12h) == time() - 43200))[1d:1d]) >= 3600)[10d:1d]) / 3600",
           "interval": "1d",
           "instant": true
         }
@@ -266,7 +266,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "avg_over_time((last_over_time((sleephq_usage_seconds{machine=~\"$machine\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d]) >= bool 14400)[30d:1d]) * 100",
+          "expr": "avg_over_time((last_over_time((sleephq_usage_seconds{machine=~\"$machine\"} offset 12h and (timestamp(sleephq_usage_seconds{machine=~\"$machine\"} offset 12h) == time() - 43200))[1d:1d]) >= bool 14400)[30d:1d]) * 100",
           "interval": "1d",
           "instant": true
         }
@@ -334,7 +334,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "quantile_over_time(0.5, last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])[30d:1d])",
+          "expr": "quantile_over_time(0.5, last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h and (timestamp(sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h) == time() - 43200))[1d:1d])[30d:1d])",
           "interval": "1d",
           "instant": true
         }
@@ -549,7 +549,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h and (timestamp(sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "AHI"
         }
@@ -654,7 +654,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"obstructive_apnea\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"obstructive_apnea\"} offset 12h and (timestamp(sleephq_ahi{machine=~\"$machine\",type=\"obstructive_apnea\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "Obstructive"
         },
@@ -664,7 +664,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"clear_airway\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"clear_airway\"} offset 12h and (timestamp(sleephq_ahi{machine=~\"$machine\",type=\"clear_airway\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "Clear airway"
         },
@@ -674,7 +674,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"hypopnea\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"hypopnea\"} offset 12h and (timestamp(sleephq_ahi{machine=~\"$machine\",type=\"hypopnea\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "Hypopnea"
         }
@@ -785,7 +785,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_usage_seconds{machine=~\"$machine\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d]) / 3600",
+          "expr": "last_over_time((sleephq_usage_seconds{machine=~\"$machine\"} offset 12h and (timestamp(sleephq_usage_seconds{machine=~\"$machine\"} offset 12h) == time() - 43200))[1d:1d]) / 3600",
           "interval": "1d",
           "legendFormat": "Usage"
         }
@@ -883,7 +883,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_pressure_cmh2o{machine=~\"$machine\",stat=\"min\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_pressure_cmh2o{machine=~\"$machine\",stat=\"min\"} offset 12h and (timestamp(sleephq_pressure_cmh2o{machine=~\"$machine\",stat=\"min\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "Min"
         },
@@ -893,7 +893,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_pressure_cmh2o{machine=~\"$machine\",stat=\"med\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_pressure_cmh2o{machine=~\"$machine\",stat=\"med\"} offset 12h and (timestamp(sleephq_pressure_cmh2o{machine=~\"$machine\",stat=\"med\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "Median"
         },
@@ -903,7 +903,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_pressure_cmh2o{machine=~\"$machine\",stat=\"upper\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_pressure_cmh2o{machine=~\"$machine\",stat=\"upper\"} offset 12h and (timestamp(sleephq_pressure_cmh2o{machine=~\"$machine\",stat=\"upper\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "95th pct"
         }
@@ -1014,7 +1014,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_leak_rate_lpm{machine=~\"$machine\",stat=\"med\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_leak_rate_lpm{machine=~\"$machine\",stat=\"med\"} offset 12h and (timestamp(sleephq_leak_rate_lpm{machine=~\"$machine\",stat=\"med\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "Median"
         },
@@ -1024,7 +1024,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_leak_rate_lpm{machine=~\"$machine\",stat=\"upper\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_leak_rate_lpm{machine=~\"$machine\",stat=\"upper\"} offset 12h and (timestamp(sleephq_leak_rate_lpm{machine=~\"$machine\",stat=\"upper\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "95th pct"
         }
@@ -1121,7 +1121,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_resp_rate_bpm{machine=~\"$machine\",stat=\"med\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_resp_rate_bpm{machine=~\"$machine\",stat=\"med\"} offset 12h and (timestamp(sleephq_resp_rate_bpm{machine=~\"$machine\",stat=\"med\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "Median"
         },
@@ -1131,7 +1131,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_resp_rate_bpm{machine=~\"$machine\",stat=\"upper\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_resp_rate_bpm{machine=~\"$machine\",stat=\"upper\"} offset 12h and (timestamp(sleephq_resp_rate_bpm{machine=~\"$machine\",stat=\"upper\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "95th pct"
         }
@@ -1240,7 +1240,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h and (timestamp(sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "Nightly"
         },
@@ -1250,7 +1250,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "avg_over_time(last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])[30d:1d])",
+          "expr": "avg_over_time(last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h and (timestamp(sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h) == time() - 43200))[1d:1d])[30d:1d])",
           "interval": "1d",
           "legendFormat": "30-night avg"
         }
@@ -1367,7 +1367,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_machine_setting{machine=~\"$machine\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_machine_setting{machine=~\"$machine\"} offset 12h and (timestamp(sleephq_machine_setting{machine=~\"$machine\"} offset 12h) == time() - 43200))[1d:1d])",
           "legendFormat": "{{setting}}",
           "range": true,
           "instant": false,
@@ -1425,7 +1425,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_epap_cmh2o{machine=~\"$machine\",stat=\"med\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_epap_cmh2o{machine=~\"$machine\",stat=\"med\"} offset 12h and (timestamp(sleephq_epap_cmh2o{machine=~\"$machine\",stat=\"med\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "Median"
         },
@@ -1435,7 +1435,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_epap_cmh2o{machine=~\"$machine\",stat=\"upper\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_epap_cmh2o{machine=~\"$machine\",stat=\"upper\"} offset 12h and (timestamp(sleephq_epap_cmh2o{machine=~\"$machine\",stat=\"upper\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "95th pct"
         }
@@ -1531,7 +1531,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_flow_limit{machine=~\"$machine\",stat=\"av\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_flow_limit{machine=~\"$machine\",stat=\"av\"} offset 12h and (timestamp(sleephq_flow_limit{machine=~\"$machine\",stat=\"av\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "Average"
         },
@@ -1541,7 +1541,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_flow_limit{machine=~\"$machine\",stat=\"upper\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_flow_limit{machine=~\"$machine\",stat=\"upper\"} offset 12h and (timestamp(sleephq_flow_limit{machine=~\"$machine\",stat=\"upper\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "95th pct"
         }
@@ -1637,7 +1637,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_ahi_score{machine=~\"$machine\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_ahi_score{machine=~\"$machine\"} offset 12h and (timestamp(sleephq_ahi_score{machine=~\"$machine\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "AHI"
         },
@@ -1647,7 +1647,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_usage_score{machine=~\"$machine\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_usage_score{machine=~\"$machine\"} offset 12h and (timestamp(sleephq_usage_score{machine=~\"$machine\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "Usage"
         },
@@ -1657,7 +1657,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_leak_score{machine=~\"$machine\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_leak_score{machine=~\"$machine\"} offset 12h and (timestamp(sleephq_leak_score{machine=~\"$machine\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "Leak"
         }
@@ -1784,7 +1784,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h and (timestamp(sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "AHI"
         }
@@ -1870,7 +1870,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_usage_seconds{machine=~\"$machine\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d]) / 3600",
+          "expr": "last_over_time((sleephq_usage_seconds{machine=~\"$machine\"} offset 12h and (timestamp(sleephq_usage_seconds{machine=~\"$machine\"} offset 12h) == time() - 43200))[1d:1d]) / 3600",
           "interval": "1d",
           "legendFormat": "Usage"
         }
@@ -1957,7 +1957,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+          "expr": "last_over_time((sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h and (timestamp(sleephq_ahi{machine=~\"$machine\",type=\"total\"} offset 12h) == time() - 43200))[1d:1d])",
           "interval": "1d",
           "legendFormat": "AHI"
         }
@@ -2020,7 +2020,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "last_over_time((sleephq_spo2_percent{stat=\"med\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+              "expr": "last_over_time((sleephq_spo2_percent{stat=\"med\"} offset 12h and (timestamp(sleephq_spo2_percent{stat=\"med\"} offset 12h) == time() - 43200))[1d:1d])",
               "interval": "1d",
               "legendFormat": "Median"
             },
@@ -2030,7 +2030,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "last_over_time((sleephq_spo2_percent{stat=\"min\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+              "expr": "last_over_time((sleephq_spo2_percent{stat=\"min\"} offset 12h and (timestamp(sleephq_spo2_percent{stat=\"min\"} offset 12h) == time() - 43200))[1d:1d])",
               "interval": "1d",
               "legendFormat": "Min"
             }
@@ -2126,7 +2126,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "last_over_time((sleephq_pulse_rate_bpm{stat=\"med\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+              "expr": "last_over_time((sleephq_pulse_rate_bpm{stat=\"med\"} offset 12h and (timestamp(sleephq_pulse_rate_bpm{stat=\"med\"} offset 12h) == time() - 43200))[1d:1d])",
               "interval": "1d",
               "legendFormat": "Median"
             },
@@ -2136,7 +2136,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "last_over_time((sleephq_pulse_rate_bpm{stat=\"upper\"} offset 12h and on(machine, machine_id) (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))[1d:1d])",
+              "expr": "last_over_time((sleephq_pulse_rate_bpm{stat=\"upper\"} offset 12h and (timestamp(sleephq_pulse_rate_bpm{stat=\"upper\"} offset 12h) == time() - 43200))[1d:1d])",
               "interval": "1d",
               "legendFormat": "95th pct"
             }

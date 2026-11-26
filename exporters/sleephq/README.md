@@ -95,10 +95,13 @@ Every nightly panel selects the finished sample and nothing else:
 ```promql
 last_over_time(
   (sleephq_ahi{type="total"} offset 12h
-    and on(machine, machine_id)
-    (timestamp(sleephq_usage_seconds offset 12h) == time() - 43200))
+    and
+    (timestamp(sleephq_ahi{type="total"} offset 12h) == time() - 43200))
   [1d:1d])
 ```
+
+Each metric is gated on its own timestamp, so a record that lacks one field
+(an O2 Ring night has no AHI, for example) still shows the fields it has.
 
 `timestamp(...) == time() - 43200` is true only when the sample 12h before
 the evaluation instant sits exactly on that instant, which a periodic scrape
