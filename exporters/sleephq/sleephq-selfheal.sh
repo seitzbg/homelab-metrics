@@ -72,6 +72,16 @@ if ! ls -d "$WORK"/blocks/01* >/dev/null 2>&1; then
   exit 1
 fi
 
+# Stage the blocks on the TSDB's own filesystem before deleting anything, so a
+# full disk or a failed copy stops the run while the stored samples still exist.
+# Prometheus ignores a directory whose name is not a block id; after the deletes
+# each block is published with a rename, which needs no space.
+STAGE="$(mktemp -d "$PROM_DATA_DIR/.sleephq-selfheal.XXXXXX")"
+trap 'rm -rf "$WORK" "$STAGE"' EXIT
+log "staging blocks in $PROM_DATA_DIR"
+cp -r "$WORK"/blocks/01* "$STAGE"/
+chown -R --reference="$PROM_DATA_DIR" "$STAGE"
+
 # Delete only what the new blocks replace: the (machine, night) pairs in the
 # file. A machine that has no record for a date in this dump keeps its stored
 # sample. start == end deletes that instant only; live scrape samples sit at
@@ -98,10 +108,9 @@ for pair in "${PAIRS[@]}"; do
   fi
 done
 
-log "loading blocks into $PROM_DATA_DIR and restarting $PROM_CONTAINER"
-for block in "$WORK"/blocks/01*; do
-  cp -r "$block" "$PROM_DATA_DIR"/
-  chown -R --reference="$PROM_DATA_DIR" "$PROM_DATA_DIR/$(basename "$block")"
+log "publishing blocks into $PROM_DATA_DIR and restarting $PROM_CONTAINER"
+for block in "$STAGE"/01*; do
+  mv "$block" "$PROM_DATA_DIR"/
 done
 docker restart "$PROM_CONTAINER" >/dev/null
 
