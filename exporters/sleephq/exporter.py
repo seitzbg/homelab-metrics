@@ -47,6 +47,7 @@ Config (environment):
   SLEEPHQ_CLIENT_SECRET   (required)
   EXPORTER_PORT           default 9826
   POLL_INTERVAL           seconds between API polls, default 21600 (6h)
+  POLL_RETRY_INTERVAL     seconds until the next poll after a failed one, default 300
   SLEEPHQ_HTTP_TIMEOUT    per-request timeout seconds, default 30
 """
 from __future__ import annotations
@@ -69,6 +70,7 @@ CLIENT_ID = os.environ.get("SLEEPHQ_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("SLEEPHQ_CLIENT_SECRET")
 PORT = int(os.environ.get("EXPORTER_PORT", "9826"))
 POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "21600"))
+POLL_RETRY_INTERVAL = int(os.environ.get("POLL_RETRY_INTERVAL", "300"))
 HTTP_TIMEOUT = float(os.environ.get("SLEEPHQ_HTTP_TIMEOUT", "30"))
 
 # One page is plenty for "the latest night" — machine_dates comes back with the
@@ -93,6 +95,7 @@ class Poller:
         self.snapshot = {"samples": [], "nights": {}, "success": False, "scrape_ts": 0.0, "errors": 0}
 
     def poll_once(self):
+        """Poll the API once. Returns True when the snapshot was refreshed."""
         try:
             teams = self.client.teams()
             samples, nights = [], {}
@@ -113,7 +116,7 @@ class Poller:
             with self.lock:
                 self.errors += 1
                 self.snapshot = dict(self.snapshot, success=False, scrape_ts=time.time(), errors=self.errors)
-            return
+            return False
 
         with self.lock:
             self.snapshot = {
@@ -124,13 +127,16 @@ class Poller:
                 "errors": self.errors,
             }
         log.info("poll ok: %d machine(s), %d sample(s)", len(nights), len(samples))
+        return True
 
-    def run(self):
-        # Sleep first: main() primes an initial poll synchronously, so looping
-        # without a leading sleep would double-poll at startup.
+    def run(self, ok=True):
+        # Sleep first: main() primes an initial poll synchronously and passes
+        # its result in, so looping without a leading sleep would double-poll.
+        # A failed poll is retried on the short interval, so a brief network or
+        # DNS blip costs minutes of staleness rather than a full POLL_INTERVAL.
         while True:
-            time.sleep(POLL_INTERVAL)
-            self.poll_once()
+            time.sleep(POLL_INTERVAL if ok else POLL_RETRY_INTERVAL)
+            ok = self.poll_once()
 
     def get(self):
         with self.lock:
@@ -214,15 +220,18 @@ def main():
     poller = Poller(client)
 
     # Prime one poll synchronously so the very first scrape already has data.
-    # Best-effort: on failure the loop retries every POLL_INTERVAL.
-    poller.poll_once()
+    # Best-effort: on failure the loop retries every POLL_RETRY_INTERVAL.
+    primed = poller.poll_once()
 
-    threading.Thread(target=poller.run, daemon=True).start()
+    threading.Thread(target=poller.run, args=(primed,), daemon=True).start()
 
     registry = CollectorRegistry()
     registry.register(SleepHQCollector(poller))
     start_http_server(PORT, registry=registry)
-    log.info("SleepHQ exporter listening on :%d (polling every %ds)", PORT, POLL_INTERVAL)
+    log.info(
+        "SleepHQ exporter listening on :%d (polling every %ds, retrying a failed poll after %ds)",
+        PORT, POLL_INTERVAL, POLL_RETRY_INTERVAL,
+    )
 
     while True:
         time.sleep(3600)
